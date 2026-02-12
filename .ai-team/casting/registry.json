@@ -1,0 +1,39 @@
+{
+  "agents": {
+    "mikey": {
+      "persistent_name": "Mikey",
+      "universe": "The Goonies",
+      "created_at": "2026-02-12T15:55:48Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "chunk": {
+      "persistent_name": "Chunk",
+      "universe": "The Goonies",
+      "created_at": "2026-02-12T15:55:48Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "data": {
+      "persistent_name": "Data",
+      "universe": "The Goonies",
+      "created_at": "2026-02-12T15:55:48Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "mouth": {
+      "persistent_name": "Mouth",
+      "universe": "The Goonies",
+      "created_at": "2026-02-12T15:55:48Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    "brand": {
+      "persistent_name": "Brand",
+      "universe": "The Goonies",
+      "created_at": "2026-02-12T15:55:48Z",
+      "legacy_named": false,
+      "status": "active"
+    }
+  }
+}
