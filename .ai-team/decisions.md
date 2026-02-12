@@ -184,3 +184,81 @@ This file tracks architectural, scope, and process decisions made by the team. A
 - Steeper learning curve than Python/Go — but the team can handle it
 - Longer compile times — mitigated by incremental builds
 - No REPL for quick prototyping — but we have `cargo check` and tests
+
+---
+
+### 2025-01-20: Phase 2 Complete — 2D6 Dungeon Generation Engine
+
+**By:** Data
+
+**What:** Implemented complete 2D6 dungeon generation engine with 24 comprehensive unit tests. DungeonGenerator::generate() produces valid dungeons following all pen & paper rules: D66 dimension rolling, double expansion, corridor/small/large room detection, exit placement with clockwise algorithm, and entrance room special handling.
+
+**Why:** Phase 2 deliverable provides the core game logic foundation. Deterministic seed-based RNG ensures reproducibility (same seed = same dungeon). Extensive test coverage validates rule compliance and catches edge cases (boundary conditions, doubles, exit placement restrictions).
+
+**Implementation Details:**
+
+- **Room types properly classified**: Entrance (first room, 3 exits, 6-12 area), Normal, Small (≤6 area), Large (doubled + ≥32 area), Corridor (width=1 or height=1)
+- **Exit placement follows 2D6 rules**: D6 roll determines count (1=none, 2-3=1, 4-5=2, 6=3), clockwise placement with restrictions (no entrance wall, no duplicates per wall)
+- **Double handling**: Except for 6,6 and entrance room, doubles trigger re-roll and dimension addition
+- **24 unit tests**: Cover deterministic generation, entrance constraints, room type detection, exit placement, dimension bounds, and dice roll ranges
+
+**Integration Points:**
+
+- Phase 3 (Mouth/rendering) will consume Room structs and render to screen
+- Phase 4 (Chunk/pathfinding) will use room positions and exits for navigation
+- Phase 5 (Scribe/export) will serialize dungeons to ASCII maps
+
+**Files Modified:**
+
+- src/rng.rs: Added d6() and d66() methods
+- src/dungeon/room.rs: Room, RoomType, Exit, Wall structs
+- src/dungeon/generator.rs: DungeonGenerator with full 2D6 rules + 24 tests
+- src/lib.rs: Export DungeonGenerator and Room types
+- examples/generate_dungeon.rs: Demo program for visual verification
+- tests/common/mod.rs: Fixed exit field reference (direction → wall)
+
+**Acceptance Criteria Met:**
+
+✅ DungeonGenerator::generate() produces valid room lists  
+✅ Deterministic generation via SeededRng (same seed = same dungeon)  
+✅ 24 unit tests (exceeds 20 minimum, covers all edge cases)  
+✅ Visual verification with example program shows ~20 rooms per dungeon  
+✅ All room types generated correctly (entrance, normal, corridor, small, large)  
+✅ Exit placement follows all restrictions (no duplicates, max 3, entrance wall skip)  
+
+**Next Steps:**
+
+Phase 3 can now integrate DungeonGenerator for rendering. Room positioning (currently placeholder 0,0) will be handled by spatial layout algorithm in rendering or pathfinding phase.
+
+---
+
+### 2025-01-20: Phase 3 Camera Panning and Dungeon Rendering
+
+**By:** Mouth
+
+**What:** Implemented camera system with intelligent panning logic and ASCII dungeon renderer using Ratatui's Widget API. Camera maintains explorer in a "comfort zone" (middle 50% of screen) and pans smoothly when explorer reaches outer quarters. Dungeon rooms render with styled ASCII characters (walls: +/-/|, floors: ., doors: ▢, explorer: @) using Catppuccin Mocha theme.
+
+**Why:** 
+
+1. **Comfort Zone Panning:** Instead of hard-centering the camera on every frame (which causes jitter), the camera only pans when the explorer reaches the last quarter of the screen in any direction. This creates smooth, natural-feeling camera movement while keeping the explorer visible and roughly centered.
+
+2. **Visibility Culling:** The renderer skips rooms that are completely outside the camera viewport, improving performance for large dungeons. This is critical for Phase 4 when we'll have ~20 rooms spread across world space.
+
+3. **Widget Pattern:** Using Ratatui's Widget trait with a custom DungeonWidget allows clean separation between game state (dungeon data, explorer position) and rendering logic. The canvas owns the theme and camera, while the widget handles actual buffer writes.
+
+4. **Saturating Math for Edge Cases:** Camera positioning uses saturating_sub() to handle the dungeon origin gracefully - when the explorer is at (10, 10) and we try to center the 80x24 camera, it clamps to (0, 0) instead of underflowing.
+
+5. **Terminal Resize Handling:** Camera dimensions update on Event::Resize, maintaining viewport continuity when users resize their terminal. Tests verify that explorer remains visible across resize events.
+
+**Testing:** Added 7 integration tests in `tests/camera_rendering.rs` covering camera initialization, panning triggers, stability in middle area, resize handling, and multi-position visibility. All 32 existing tests still pass (dungeon generation + camera tests = 39 total).
+
+**Acceptance Criteria Met:**
+- ✅ ASCII/Unicode walls, floors, corridors, doors, explorer sprite
+- ✅ Ratatui canvas draws rooms + explorer position
+- ✅ Camera keeps explorer roughly centered (not flush, but in middle area)
+- ✅ Pan logic: explorer reaches last quarter → viewport shifts
+- ✅ Terminal resize events handled gracefully
+- ✅ Catppuccin Mocha theming applied
+- ✅ Tests: camera pans correctly, explorer stays in viewport bounds
+
+**Next:** Phase 4 (Chunk) will implement pathfinding and explorer AI on top of this rendering foundation.

@@ -31,4 +31,37 @@
 📌 Team update (2026-02-12): Phase 1 Terminal Loop complete — Mouth can integrate rendering atop Canvas abstraction in Phase 3 — decided by Chunk
 📌 Team update (2026-02-12): Test Infrastructure ready — Mouth will add camera/pathfinding tests in Phase 3/4 — decided by Brand
 
+### Phase 3 Complete (2025-01-20)
+
+**Rendering Architecture:**
+- `src/renderer/canvas.rs`: Main rendering widget using Ratatui's Buffer API
+- `src/renderer/camera.rs`: Viewport management with intelligent panning logic
+- Dungeon rooms rendered with ASCII walls (+, -, |), floor dots (.), and door symbols (▢)
+- Explorer sprite rendered as '@' character
+- Catppuccin Mocha theme applied (walls: lavender, floors: latte, doors: peach, explorer: green)
+
+**Camera Panning Strategy:**
+- Camera keeps explorer in "comfort zone" (middle 50% of screen)
+- Pans when explorer reaches outer quarters (last 25% on any edge)
+- Uses saturating subtraction to handle origin edge cases gracefully
+- Resize events update camera dimensions without breaking viewport
+
+**Key Files:**
+- `src/renderer/canvas.rs`: DungeonWidget renders rooms and explorer on Ratatui buffer
+- `src/renderer/camera.rs`: Camera struct with update(), center_on(), resize(), is_visible()
+- `src/main.rs`: Integrated dungeon generation with camera-based rendering
+- `tests/camera_rendering.rs`: 7 integration tests for panning, centering, visibility
+
+**Patterns Established:**
+- Screen space conversion: world coordinates → camera offset → screen coordinates
+- Visibility culling: skip rendering rooms outside viewport bounds
+- Wall character selection: corners use '+', horizontals use '-', verticals use '|'
+- Door rendering: separate pass after walls to ensure visibility
+
+**Fixed Seed for Acceptance:**
+- Using seed 42 for deterministic testing
+- Entrance room spawns at (10, 10) with 3 exits
+- Explorer starts centered in entrance room
+- Camera initializes centered on explorer position
+
 

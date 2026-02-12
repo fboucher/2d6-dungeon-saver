@@ -67,3 +67,7 @@ Fixed compilation issue: Added Hash derive to Wall enum for exit placement valid
 📌 Team update (2026-02-12): Phase 1 Terminal Event Loop complete — Brand can integrate into test infrastructure — decided by Chunk
 
 
+
+---
+
+📌 Team update (2026-02-12): Phases 2 (dungeon generation) and 3 (rendering) acceptance criteria met; 39 tests passing (24 generation + 7 camera + 8 infra) — decided by Data, Mouth
