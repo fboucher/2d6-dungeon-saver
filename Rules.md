@@ -71,20 +71,23 @@ Each element has its own color from the Catppuccin Mocha theme:
 ### Visual Example
 
 ```
-     ╔════╗
-     ║··@·║
-╔════╣▪··?╠════╗
-║::::::··:::::·║
-║::::::::·:····║
-╚═══════╩══════╝
+     ####
+     #..#
+####+#+####
+#:::::::..#
+#:::::::..#
+###########+####
+          #...@#
+          #....#
+          ######
 ```
 
 - `@` = Explorer
-- `▪` = Explored exit
-- `?` = Unexplored exit
-- `·` = Floor
+- `+` = Explored exit (green)
+- `?` = Unexplored exit (yellow)
+- `.` = Floor
 - `:` = Corridor
-- `╔╗╚╝═║` = Walls
+- `#` = Walls
 
 ### Map Export
 When the application exits, the dungeon is automatically saved to:
