@@ -107,5 +107,9 @@ public class GameLoop
         Console.Clear();
         Console.WriteLine("Dungeon Saver - Exiting");
         Console.WriteLine($"Generated {_dungeon.Rooms.Count} rooms");
+        
+        // Export map
+        var exporter = new MapExporter();
+        exporter.ExportMap(_dungeon);
     }
 }
