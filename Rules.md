@@ -30,23 +30,43 @@ The dungeon generator follows strict rules to ensure consistency:
 - Define the color in a group as a theme. So in the future if we want to add different themes it will be easier.
 - For the default theme, use color from Catppuccin Mocha (ref: https://catppuccin.com/palette/).
 
+### Visual
+
+Here an ultra simply version of 2 rooms connected to each other. In the real version it can be prettier.
+
+Room 1: 6×4 floor with north and east doors
+Room 2: 8×10 floor
+Connected via east door
+
+         ############
+         #          #
+         #          #
+####-#####          #
+#        |          #
+#        #          #
+#        #          #
+#        #          #
+##########          #
+         #          #
+         #          #
+         ############
+
 ### Map Export
 When the application exits, the dungeon is automatically saved to:
 ```
-maps/yyyy-MM-dd_HHmm_seed<seed>.txt
+maps/yyyy-MM-dd_HHmm.txt
 ```
 
 The file includes:
 - ASCII representation of the full dungeon
 - Room count and dimensions
 
-
 ## How It Works
 
 - When the application start, the screen is empty.
 - As time pass, we watch the explorer exploring the dungeon.
 - Each time the explorer enter a new room, it can make a short pause before continuing.
-- The dungeon is generated as the explorer open doors.
+- The dungeon is generated as the explorer open doors. One room at the time. 
 - To know how to generate a room and doors and all the dungeon, refer to the document [2D6 Rules](./2D6%20Rules.md).
   - In the Rules D6 or 2D6 refer to a rolling dice 1 or 2 dice with 6 faces.   
   - This is an adaptation of a pen & paper game, so we don't care about we don't care about the grid paper and the size of the dungeon.
@@ -54,7 +74,6 @@ The file includes:
   - For now, let's forget about different level. This dungeon is one level only.
   - If the dungeon go outside the size of the screen, just pan the screen so we can still see it.
   - The explorer should always be kind of in the middle of the screen, not necessarily like the flush center, but middle.So when the explorer arrive, let's say at the last quarter of the screen, pan the screen so it stay in the kind of middle area.
-
 
 ### The Explorer
 - Automatically explores unvisited rooms first
@@ -66,4 +85,4 @@ The file includes:
 - **Terminal responsive**: Adapts to your terminal size
 - **Smooth animation**: Runs at 10 FPS with minimal CPU usage
 - **platform**: Works on Linux in the terminal. This is a terminal application.
-- **D6 or 2D6**: Refer to a rolling dice 1 or 2 dice
+- **Code**: .NET C#. would be the favorite choice. If it doesn't work python could work.
