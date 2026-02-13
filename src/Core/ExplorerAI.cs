@@ -189,16 +189,55 @@ public class ExplorerAI
 
     private void CheckExitCrossing(Point position)
     {
-        // Check if we're at an exit position
-        foreach (var room in _dungeon.Rooms)
+        // Check if we're at an exit position in the current room
+        if (_explorer.CurrentRoom == null)
+            return;
+
+        foreach (var exit in _explorer.CurrentRoom.Exits)
         {
-            foreach (var exit in room.Exits)
+            if (exit.Position == position && exit.ConnectedRoom != null)
             {
-                if (exit.Position == position && exit.ConnectedRoom != null)
+                exit.IsExplored = true;
+                
+                // Move explorer into the connected room
+                var connectedRoom = exit.ConnectedRoom;
+                
+                // Find the entrance point in the connected room
+                // It should be on the opposite wall from where we're coming
+                Point entrancePos = GetEntrancePosition(exit, connectedRoom);
+                
+                _explorer.Position = entrancePos;
+                _explorer.CurrentRoom = connectedRoom;
+                _explorer.CurrentPath.Clear(); // Clear path since we're in a new room
+                
+                // Make the connected room visible
+                if (!connectedRoom.IsVisible)
                 {
-                    exit.IsExplored = true;
+                    connectedRoom.IsVisible = true;
                 }
+                
+                break;
             }
         }
+    }
+
+    private Point GetEntrancePosition(Exit exit, Room connectedRoom)
+    {
+        // Find a floor position just inside the connected room
+        // based on which direction we're entering from
+        Rectangle bounds = connectedRoom.Bounds;
+        
+        return exit.Direction switch
+        {
+            // Coming from south, enter near north wall
+            Direction.North => new Point(bounds.X + bounds.Width / 2, bounds.Y + 1),
+            // Coming from north, enter near south wall
+            Direction.South => new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height - 2),
+            // Coming from west, enter near east wall
+            Direction.East => new Point(bounds.X + bounds.Width - 2, bounds.Y + bounds.Height / 2),
+            // Coming from east, enter near west wall
+            Direction.West => new Point(bounds.X + 1, bounds.Y + bounds.Height / 2),
+            _ => new Point(bounds.X + 1, bounds.Y + 1)
+        };
     }
 }

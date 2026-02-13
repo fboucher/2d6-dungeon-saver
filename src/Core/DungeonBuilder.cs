@@ -83,16 +83,20 @@ public class DungeonBuilder
 
     private Point CalculateNewRoomPosition(Exit exit, Room fromRoom)
     {
-        // Position the new room just outside the exit
-        // Exits have a 1-square corridor stub
+        // Position the new room adjacent to the exit
+        // The exit is ON the wall, so the new room should start right next to it
         Point exitPos = exit.Position;
         
         return exit.Direction switch
         {
-            Direction.North => new Point(exitPos.X - 2, exitPos.Y - 6),  // Room goes north
-            Direction.South => new Point(exitPos.X - 2, exitPos.Y + 2),  // Room goes south
-            Direction.East => new Point(exitPos.X + 2, exitPos.Y - 2),   // Room goes east
-            Direction.West => new Point(exitPos.X - 6, exitPos.Y - 2),   // Room goes west
+            // North: new room's bottom wall should align with this room's top wall
+            Direction.North => new Point(exitPos.X - 2, exitPos.Y - 8),
+            // South: new room's top wall should align with this room's bottom wall  
+            Direction.South => new Point(exitPos.X - 2, exitPos.Y + 1),
+            // East: new room's left wall should align with this room's right wall
+            Direction.East => new Point(exitPos.X + 1, exitPos.Y - 2),
+            // West: new room's right wall should align with this room's left wall
+            Direction.West => new Point(exitPos.X - 8, exitPos.Y - 2),
             _ => exitPos
         };
     }

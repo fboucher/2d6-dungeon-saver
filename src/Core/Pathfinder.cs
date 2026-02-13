@@ -113,7 +113,31 @@ public class Pathfinder
             new(pos.X - 1, pos.Y)   // West
         };
 
-        return neighbors.Where(p => room.Contains(p)).ToList();
+        // Filter to positions that are walkable (inside room and either floor or exit)
+        return neighbors.Where(p => IsWalkable(p, room)).ToList();
+    }
+
+    private bool IsWalkable(Point pos, Room room)
+    {
+        // Must be within room bounds
+        if (!room.Contains(pos))
+            return false;
+
+        // Check if it's an exit (exits are walkable)
+        if (room.Exits.Any(e => e.Position == pos))
+            return true;
+
+        // Check if it's a wall (walls are not walkable unless they're exits)
+        Rectangle bounds = room.Bounds;
+        bool onLeft = pos.X == bounds.Left;
+        bool onRight = pos.X == bounds.Right;
+        bool onTop = pos.Y == bounds.Top;
+        bool onBottom = pos.Y == bounds.Bottom;
+        
+        bool isWall = onLeft || onRight || onTop || onBottom;
+        
+        // Floor is walkable, walls are not (unless exit, which we checked above)
+        return !isWall;
     }
 
     private int ManhattanDistance(Point a, Point b)
