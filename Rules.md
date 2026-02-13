@@ -63,7 +63,6 @@ The file includes:
 
 ## Technical Details
 
-- **Seed-based generation**: Enter the same seed to see the same dungeon
 - **Terminal responsive**: Adapts to your terminal size
 - **Smooth animation**: Runs at 10 FPS with minimal CPU usage
 - **platform**: Works on Linux in the terminal. This is a terminal application.

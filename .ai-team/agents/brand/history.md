@@ -71,3 +71,82 @@ Fixed compilation issue: Added Hash derive to Wall enum for exit placement valid
 ---
 
 📌 Team update (2026-02-12): Phases 2 (dungeon generation) and 3 (rendering) acceptance criteria met; 39 tests passing (24 generation + 7 camera + 8 infra) — decided by Data, Mouth
+
+### Progressive Generation Test Suite (2025-01-20)
+
+Created comprehensive test suite for Phase 6 (Progressive Generation) before Data's Phase 1 API refactoring:
+
+**New test file:** `tests/progressive_generation.rs` with 10 test cases:
+1. Entrance-only generation validation
+2. Progressive room addition via `add_room()`
+3. Emergent behavior (same seed → different dungeons based on explorer path)
+4. Growth limit enforcement (~20 rooms)
+5. Exit tracking (unexplored vs explored states)
+6. Connectivity validation (no orphaned rooms)
+7. Pathfinding to unexplored exits
+8. Visual room-by-room growth simulation
+9. Infinite loop prevention
+10. Integration with explorer behavior
+
+**Updated existing tests:**
+- `tests/integration_test.rs`: Removed seed determinism tests, added progressive generation validation
+- `tests/dungeon_generation.rs`: Updated to use `generate_entrance()` + `add_room()` instead of `generate()`
+- `tests/explorer_tests.rs`: Added progressive generation simulation in explorer movement tests
+
+**Test strategy:**
+- Tests written against NEW API (won't compile until Data implements Phase 1)
+- Focus shifted from determinism to emergent behavior and constraints
+- Progressive growth: 1 room → 2 → 3 ... → ~20 (vs all-at-once)
+- Exit tracking: `connected_room_id: None` (unexplored) vs `Some(id)` (explored)
+
+**Key architectural validations:**
+- Dungeon starts with entrance only
+- Rooms generated on-demand as exits explored
+- Same seed produces different dungeons (emergent structure from explorer choices)
+- Every room reachable (no orphans)
+- Generation stops at ~20 rooms (prevents infinite loops)
+
+**Documentation:** Created `tests/PROGRESSIVE_GENERATION_TESTS.md` explaining test philosophy, coverage, and execution strategy.
+
+**Files modified:**
+- tests/progressive_generation.rs (new, 10 tests)
+- tests/integration_test.rs (updated 3 tests)
+- tests/dungeon_generation.rs (updated 4 tests)
+- tests/explorer_tests.rs (updated 5 tests)
+- tests/PROGRESSIVE_GENERATION_TESTS.md (new documentation)
+
+**Dependencies:** Tests compile once Data implements:
+- `DungeonGenerator::generate_entrance() -> Room`
+- `DungeonGenerator::add_room(room_id: usize, wall: Wall) -> Room`
+
+**Convention established:** Progressive generation tests simulate explorer-driven discovery, validating emergent behavior rather than deterministic structure.
+
+---
+
+### Dead Code Cleanup (2025-01-20)
+
+Eliminated all 5 compiler warnings from deprecated batch generation code:
+
+**Preserved with `#[allow(dead_code)]`:**
+- `Room::area()` and `Room::is_corridor()`: Used by test suites, valid utility methods
+- `DungeonGenerator::generate()` + helpers (`collect_available_exits`, `collect_room_exits`): Already deprecated, kept for backward compatibility with 56 existing tests
+- `AvailableExit` struct: Only used by deprecated batch generation
+- `Camera::is_visible()`: Public API method with test coverage, reserved for future visibility culling
+- `Theme.corridor` field: Part of theming system, not yet rendered
+
+**Rationale:** Code marked `#[allow(dead_code)]` instead of deleted when:
+1. Method is tested and part of public API (e.g., `is_visible()`)
+2. Method supports backward-compatible tests (e.g., deprecated `generate()`)
+3. Field is part of a coherent design (e.g., `Theme.corridor`)
+
+Build now produces zero warnings. All 45 tests pass.
+
+**Files modified:**
+- src/dungeon/room.rs: Added `#[allow(dead_code)]` to `area()` and `is_corridor()`
+- src/dungeon/generator.rs: Added `#[allow(dead_code)]` to deprecated batch generation methods and `AvailableExit` struct
+- src/renderer/camera.rs: Added `#[allow(dead_code)]` to `is_visible()`
+- src/theme.rs: Added `#[allow(dead_code)]` to `corridor` field
+
+**Convention established:** Use `#[allow(dead_code)]` over deletion when code has test coverage, serves backward compatibility, or is intentionally reserved for future features. Add comments explaining the rationale.
+
+---

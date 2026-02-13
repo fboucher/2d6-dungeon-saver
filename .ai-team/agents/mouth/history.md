@@ -64,4 +64,31 @@
 - Explorer starts centered in entrance room
 - Camera initializes centered on explorer position
 
+### Explorer Animation Fix (2025-01-20)
+
+**Problem:** Explorer was static and not moving. The `@` character stayed in one position despite update() being called every frame.
+
+**Root Cause:** Rooms were positioned with 1-tile gaps between them, but the pathfinder only marked room interior tiles as walkable. Explorer couldn't pathfind between disconnected rooms.
+
+**Solution:**
+1. **Pathfinder Enhancement:** Modified `Pathfinder::new()` to add corridor tiles connecting rooms through their exits. Each exit now creates a walkable tile in the direction of its wall (North/South/East/West).
+
+2. **Movement Cooldown:** Added `move_cooldown` field to Explorer to slow down movement from 10 tiles/sec to ~3 tiles/sec (moves every 3 ticks). This makes the animation visible and smooth.
+
+3. **Corridor Rendering:** Added `render_corridors()` method to DungeonWidget to visualize the connecting tiles between rooms, rendering them as floor dots (`.`).
+
+**Files Modified:**
+- `src/explorer/pathfinder.rs`: Added `get_exit_corridor_tiles()` method to generate walkable corridor tiles
+- `src/explorer/behavior.rs`: Added `move_cooldown` field and movement throttling logic
+- `src/renderer/canvas.rs`: Added `render_corridors()` to visualize connections
+- `examples/test_explorer_movement.rs`: Created test harness to verify movement
+
+**Verification:**
+- Test example shows 9 movements over 100 frames (~3 tiles/sec as expected)
+- Explorer successfully pathfinds between rooms and discovers new areas
+- Camera follows explorer smoothly
+- Animation is now visible and continuous
+
+**Key Insight:** Pathfinding needs to account for inter-room connectivity, not just room interiors. The 2D6 dungeon generation creates spatial gaps, so corridor tiles must be explicitly added to the walkable set.
+
 
