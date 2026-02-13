@@ -14,25 +14,14 @@ public class Renderer
     private int _terminalHeight;
     private Point _cameraOffset;
 
-    // Unicode box-drawing characters
-    private const char WALL_HORIZONTAL = '═';
-    private const char WALL_VERTICAL = '║';
-    private const char WALL_TOP_LEFT = '╔';
-    private const char WALL_TOP_RIGHT = '╗';
-    private const char WALL_BOTTOM_LEFT = '╚';
-    private const char WALL_BOTTOM_RIGHT = '╝';
-    private const char WALL_T_DOWN = '╦';
-    private const char WALL_T_UP = '╩';
-    private const char WALL_T_RIGHT = '╠';
-    private const char WALL_T_LEFT = '╣';
-    private const char WALL_CROSS = '╬';
-    
-    private const char FLOOR = '·';
-    private const char CORRIDOR_FLOOR = '░';
+    // ASCII characters (matching map export)
+    private const char WALL = '#';
+    private const char FLOOR = '.';
+    private const char CORRIDOR_FLOOR = ':';
     private const char EXPLORER_CHAR = '@';
-    private const char EXIT_EXPLORED = '▪';
+    private const char EXIT_EXPLORED = '+';
     private const char EXIT_UNEXPLORED = '?';
-    private const char FOG = '█';
+    private const char FOG = ' ';  // Empty space for fog
 
     public Renderer()
     {
@@ -195,23 +184,7 @@ public class Renderer
 
     private char GetWallChar(Room room, Point pos, Dungeon dungeon)
     {
-        Rectangle bounds = room.Bounds;
-        
-        bool onLeft = pos.X == bounds.Left;
-        bool onRight = pos.X == bounds.Right;
-        bool onTop = pos.Y == bounds.Top;
-        bool onBottom = pos.Y == bounds.Bottom;
-
-        // Corners
-        if (onTop && onLeft) return WALL_TOP_LEFT;
-        if (onTop && onRight) return WALL_TOP_RIGHT;
-        if (onBottom && onLeft) return WALL_BOTTOM_LEFT;
-        if (onBottom && onRight) return WALL_BOTTOM_RIGHT;
-
-        // Edges
-        if (onTop || onBottom) return WALL_HORIZONTAL;
-        if (onLeft || onRight) return WALL_VERTICAL;
-
-        return WALL_HORIZONTAL;
+        // Simple ASCII walls - just use #
+        return WALL;
     }
 }

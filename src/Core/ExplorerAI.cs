@@ -84,26 +84,28 @@ public class ExplorerAI
 
     private void DecideNextDestination()
     {
-        // First priority: Find unexplored exits
+        // First priority: Find unexplored exits in current room
         var unexploredExit = FindUnexploredExit();
         
         if (unexploredExit != null)
         {
             _explorer.State = ExplorerState.Moving;
             NavigateToExit(unexploredExit);
+            return;
         }
-        else if (!_dungeon.IsComplete)
+        
+        // Second priority: Go back to a room that has unexplored exits
+        var exitToOtherRoom = FindExitToRoomWithUnexploredExits();
+        if (exitToOtherRoom != null)
         {
-            // Dungeon not complete but no unexplored exits visible - wander
-            _explorer.State = ExplorerState.Wandering;
-            WanderRandomly();
+            _explorer.State = ExplorerState.Moving;
+            NavigateToExit(exitToOtherRoom);
+            return;
         }
-        else
-        {
-            // Dungeon complete - wander randomly
-            _explorer.State = ExplorerState.Wandering;
-            WanderRandomly();
-        }
+        
+        // No unexplored exits anywhere - just wander
+        _explorer.State = ExplorerState.Wandering;
+        WanderRandomly();
     }
 
     private Exit? FindUnexploredExit()
@@ -126,8 +128,25 @@ public class ExplorerAI
             }
         }
         
-        // TODO: If no exits in current room, could navigate to other explored rooms
-        // For now, just wander if no exits in current room
+        return null;
+    }
+
+    private Exit? FindExitToRoomWithUnexploredExits()
+    {
+        // Find an explored exit in current room that leads to a room with unexplored exits
+        if (_explorer.CurrentRoom == null)
+            return null;
+
+        foreach (var exit in _explorer.CurrentRoom.Exits.Where(e => e.IsExplored && e.ConnectedRoom != null))
+        {
+            var connectedRoom = exit.ConnectedRoom;
+            if (connectedRoom != null && connectedRoom.Exits.Any(e => !e.IsExplored))
+            {
+                // This room has unexplored exits, go back to it
+                return exit;
+            }
+        }
+
         return null;
     }
 
