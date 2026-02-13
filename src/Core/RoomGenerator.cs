@@ -24,7 +24,7 @@ public class RoomGenerator
         var (x, y) = _dice.RollD66();
         int area = x * y;
 
-        // Entrance room must be 6-12 squares
+        // Entrance room must be 6-12 squares (floor area)
         if (area < 6)
         {
             x = 3;
@@ -36,7 +36,8 @@ public class RoomGenerator
             y = 3;
         }
 
-        var bounds = new Rectangle(position.X, position.Y, x, y);
+        // Dimensions are floor area, add 2 for walls (1 on each side)
+        var bounds = new Rectangle(position.X, position.Y, x + 2, y + 2);
         var room = new Room(_nextRoomId++, bounds, RoomType.Entrance);
         
         // Entrance room is always visible
@@ -70,13 +71,17 @@ public class RoomGenerator
         int area = x * y;
         RoomType type = DetermineRoomType(area);
         
-        var bounds = new Rectangle(position.X, position.Y, x, y);
+        // Dimensions are floor area, add 2 for walls (1 on each side)
+        var bounds = new Rectangle(position.X, position.Y, x + 2, y + 2);
         return new Room(_nextRoomId++, bounds, type);
     }
 
     private Room GenerateCorridor(Point position, int x, int y)
     {
-        var bounds = new Rectangle(position.X, position.Y, x, y);
+        // For corridors, add 2 to the non-1 dimension for walls
+        // If x=1, it's a vertical corridor, add 2 to x for walls
+        // If y=1, it's a horizontal corridor, add 2 to y for walls
+        var bounds = new Rectangle(position.X, position.Y, x + 2, y + 2);
         return new Room(_nextRoomId++, bounds, RoomType.Corridor);
     }
 
