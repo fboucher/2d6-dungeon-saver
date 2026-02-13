@@ -1,55 +1,90 @@
 # Dungeon Saver
 
-A terminal-based dungeon explorer screensaver that runs in your terminal. Watch an explorer as he discover each rooms and wander of a dungeon.
+A terminal-based dungeon explorer screensaver that runs in your terminal. Watch an explorer as they discover each room and wander through a procedurally generated dungeon.
 
 ## Features
 
 - **Full terminal takeover** - Uses the entire terminal window like a screensaver
-- **Procedurally generated dungeons** - Each dungeon is unique
-- **AI explorer** - An autonomous explorer character that navigates the dungeon using pathfinding
-- **Top-down view** - Classic ASCII/Unicode top-down perspective
+- **Procedurally generated dungeons** - Each dungeon is unique, based on 2D6 pen & paper game rules
+- **AI explorer** - An autonomous explorer character that navigates the dungeon using A* pathfinding
+- **Top-down view** - Classic ASCII/Unicode top-down perspective with beautiful box-drawing characters
 - **Real-time animation** - Watch the explorer discover rooms and wander the dungeon
+- **Fog of war** - Unvisited rooms are hidden; only explored areas are visible
+- **Catppuccin Mocha theme** - Beautiful color scheme for walls, floors, and the explorer
 - **Map export** - Saves generated dungeons to text files in the `maps/` folder
 
+## Build & Run
+
+### Requirements
+- .NET 10.0 or later
+- Linux terminal with Unicode support
+
+### Build
+```bash
+cd src
+dotnet build
+```
+
+### Run
+```bash
+cd src
+dotnet run
+```
+
+Or from the build output:
+```bash
+./src/bin/Debug/net10.0/DungeonSaver
+```
 
 ### Controls
 - **q** or **Q** - Quit the screensaver
-- **Ctrl-C** - Emergency exit
+- **Ctrl+C** - Emergency exit
+
+## How It Works
+
+- When the application starts, the screen shows only the entrance room
+- As time passes, watch the explorer (@) navigate through the dungeon
+- Each time the explorer enters a new room, they pause briefly before continuing
+- The dungeon is generated progressively as the explorer opens doors, one room at a time
+- Unexplored exits are marked with **?** in yellow
+- Explored exits are marked with **▪** in green
+- The viewport automatically pans to keep the explorer centered on screen
 
 ## Dungeon Generation Rules
 
-The dungeon generator follows strict rules to ensure consistency:
+The dungeon generator follows strict 2D6 pen & paper game rules:
 
 ### Dungeon
-
-- **Size:** Dungeon have arround 20 rooms
+- **Size:** Dungeons have around 20 rooms
+- **Progressive generation:** Rooms are created as the explorer discovers them
 
 ### Colors
+Each element has its own color from the Catppuccin Mocha theme:
+- **Walls:** Lavender
+- **Room floors:** Dark gray
+- **Corridor floors:** Darker gray
+- **Explored exits:** Green
+- **Unexplored exits:** Yellow
+- **Explorer:** Peach (orange)
+- **Fog of war:** Very dark (unexplored areas)
 
-- Each important element of the dungeon, walls, floor of a corridor, or floor of a room, doors, explorer, have their own colours.
-- Define the color in a group as a theme. So in the future if we want to add different themes it will be easier.
-- For the default theme, use color from Catppuccin Mocha (ref: https://catppuccin.com/palette/).
+### Visual Example
 
-### Visual
+```
+     ╔════╗
+     ║··@·║
+╔════╣▪··?╠════╗
+║::::::··:::::·║
+║::::::::·:····║
+╚═══════╩══════╝
+```
 
-Here an ultra simply version of 2 rooms connected to each other. In the real version it can be prettier.
-
-Room 1: 6×4 floor with north and east doors
-Room 2: 8×10 floor
-Connected via east door
-
-         ############
-         #          #
-         #          #
-####-#####          #
-#        |          #
-#        #          #
-#        #          #
-#        #          #
-##########          #
-         #          #
-         #          #
-         ############
+- `@` = Explorer
+- `▪` = Explored exit
+- `?` = Unexplored exit
+- `·` = Floor
+- `:` = Corridor
+- `╔╗╚╝═║` = Walls
 
 ### Map Export
 When the application exits, the dungeon is automatically saved to:
@@ -59,30 +94,54 @@ maps/yyyy-MM-dd_HHmm.txt
 
 The file includes:
 - ASCII representation of the full dungeon
-- Room count and dimensions
-
-## How It Works
-
-- When the application start, the screen is empty.
-- As time pass, we watch the explorer exploring the dungeon.
-- Each time the explorer enter a new room, it can make a short pause before continuing.
-- The dungeon is generated as the explorer open doors. One room at the time. 
-- To know how to generate a room and doors and all the dungeon, refer to the document [2D6 Rules](./2D6%20Rules.md).
-  - In the Rules D6 or 2D6 refer to a rolling dice 1 or 2 dice with 6 faces.   
-  - This is an adaptation of a pen & paper game, so we don't care about we don't care about the grid paper and the size of the dungeon.
-  - For now we can ignore what's in the room. We just draw rooms.
-  - For now, let's forget about different level. This dungeon is one level only.
-  - If the dungeon go outside the size of the screen, just pan the screen so we can still see it.
-  - The explorer should always be kind of in the middle of the screen, not necessarily like the flush center, but middle.So when the explorer arrive, let's say at the last quarter of the screen, pan the screen so it stay in the kind of middle area.
-
-### The Explorer
-- Automatically explores unvisited rooms first
-- Wanders randomly after exploring all rooms
-- Pauses briefly when discovering new rooms
+- Room count and statistics
+- Legend for map symbols
 
 ## Technical Details
 
 - **Terminal responsive**: Adapts to your terminal size
 - **Smooth animation**: Runs at 10 FPS with minimal CPU usage
-- **platform**: Works on Linux in the terminal. This is a terminal application.
-- **Code**: .NET C#. would be the favorite choice. If it doesn't work python could work.
+- **Platform**: Linux terminal application
+- **Language**: C# (.NET 10.0)
+- **Pathfinding**: A* algorithm for explorer movement
+- **Fog of war**: Only explored rooms are visible (except entrance)
+
+## The Explorer
+- Automatically explores unvisited rooms first
+- Uses pathfinding to navigate efficiently
+- Wanders randomly after exploring all rooms
+- Pauses 1-2 seconds when discovering new rooms
+- Moves at a contemplative pace (500ms between steps)
+
+## Project Structure
+
+```
+src/
+├── Core/           # Game logic and dungeon generation
+│   ├── DiceRoller.cs
+│   ├── DungeonBuilder.cs
+│   ├── ExitGenerator.cs
+│   ├── ExplorerAI.cs
+│   ├── GameLoop.cs
+│   ├── MapExporter.cs
+│   ├── Pathfinder.cs
+│   └── RoomGenerator.cs
+├── Models/         # Data models
+│   ├── Dungeon.cs
+│   ├── Exit.cs
+│   ├── Explorer.cs
+│   └── Room.cs
+├── Rendering/      # Terminal rendering
+│   ├── ColorTheme.cs
+│   └── Renderer.cs
+├── Utils/          # Utility classes
+│   ├── Point.cs
+│   └── Rectangle.cs
+└── Program.cs      # Entry point
+```
+
+## Credits
+
+Based on 2D6 dungeon generation rules from the pen & paper game system.
+Color theme: [Catppuccin Mocha](https://catppuccin.com/palette/)
+

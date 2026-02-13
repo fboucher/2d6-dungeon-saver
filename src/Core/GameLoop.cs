@@ -49,67 +49,92 @@ public class GameLoop
     /// </summary>
     public void Run()
     {
-        _running = true;
-        
-        // Setup terminal
-        Console.CursorVisible = false;
-        _renderer.ClearScreen();
-        
-        // Handle Ctrl+C gracefully
-        Console.CancelKeyPress += (sender, e) =>
+        try
         {
-            e.Cancel = true;
-            _running = false;
-        };
-
-        DateTime lastFrameTime = DateTime.Now;
-
-        while (_running)
-        {
-            DateTime frameStart = DateTime.Now;
-
-            // Handle input
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(intercept: true);
-                if (key.Key == ConsoleKey.Q || key.KeyChar == 'q' || key.KeyChar == 'Q')
-                {
-                    _running = false;
-                    break;
-                }
-            }
-
-            // Update
-            _ai.Update();
-
-            // Render
-            _renderer.Render(_dungeon, _explorer);
-
-            // Frame timing
-            TimeSpan elapsed = DateTime.Now - frameStart;
-            int sleepTime = FRAME_TIME_MS - (int)elapsed.TotalMilliseconds;
+            _running = true;
             
-            if (sleepTime > 0)
+            // Setup terminal
+            _renderer.HideCursor();
+            _renderer.ClearScreen();
+            
+            // Handle Ctrl+C gracefully
+            Console.CancelKeyPress += (sender, e) =>
             {
-                Thread.Sleep(sleepTime);
+                e.Cancel = true;
+                _running = false;
+            };
+
+            DateTime lastFrameTime = DateTime.Now;
+
+            while (_running)
+            {
+                DateTime frameStart = DateTime.Now;
+
+                // Handle input
+                if (Console.KeyAvailable)
+                {
+                    var key = Console.ReadKey(intercept: true);
+                    if (key.Key == ConsoleKey.Q || key.KeyChar == 'q' || key.KeyChar == 'Q')
+                    {
+                        _running = false;
+                        break;
+                    }
+                }
+
+                // Update
+                _ai.Update();
+
+                // Render
+                try
+                {
+                    _renderer.Render(_dungeon, _explorer);
+                }
+                catch (Exception)
+                {
+                    // Ignore rendering errors (terminal resize, etc.)
+                }
+
+                // Frame timing
+                TimeSpan elapsed = DateTime.Now - frameStart;
+                int sleepTime = FRAME_TIME_MS - (int)elapsed.TotalMilliseconds;
+                
+                if (sleepTime > 0)
+                {
+                    Thread.Sleep(sleepTime);
+                }
+
+                lastFrameTime = DateTime.Now;
             }
-
-            lastFrameTime = DateTime.Now;
         }
-
-        // Cleanup
-        Shutdown();
+        finally
+        {
+            // Cleanup
+            Shutdown();
+        }
     }
 
     private void Shutdown()
     {
-        Console.CursorVisible = true;
+        _renderer.ShowCursor();
         Console.Clear();
-        Console.WriteLine("Dungeon Saver - Exiting");
+        Console.WriteLine();
+        Console.WriteLine("═══════════════════════════════════════════");
+        Console.WriteLine("         Dungeon Saver - Exiting");
+        Console.WriteLine("═══════════════════════════════════════════");
         Console.WriteLine($"Generated {_dungeon.Rooms.Count} rooms");
+        Console.WriteLine();
         
         // Export map
-        var exporter = new MapExporter();
-        exporter.ExportMap(_dungeon);
+        try
+        {
+            var exporter = new MapExporter();
+            exporter.ExportMap(_dungeon);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting map: {ex.Message}");
+        }
+        
+        Console.WriteLine();
     }
 }
