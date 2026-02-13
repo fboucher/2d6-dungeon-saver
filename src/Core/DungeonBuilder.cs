@@ -45,11 +45,17 @@ public class DungeonBuilder
         if (exit.ConnectedRoom != null)
             return exit.ConnectedRoom;
 
-        // Calculate position for new room based on exit direction
-        Point newRoomPosition = CalculateNewRoomPosition(exit, fromRoom);
+        // Generate the room first (at temporary position)
+        Room newRoom = _roomGenerator.GenerateRoom(new Point(0, 0));
         
-        // Generate the room
-        Room newRoom = _roomGenerator.GenerateRoom(newRoomPosition);
+        // Now position it correctly based on exit direction and new room size
+        Point newRoomPosition = CalculateNewRoomPosition(exit, fromRoom, newRoom);
+        newRoom.Bounds = new Rectangle(
+            newRoomPosition.X, 
+            newRoomPosition.Y, 
+            newRoom.Bounds.Width, 
+            newRoom.Bounds.Height
+        );
         
         // Check for collisions with existing rooms
         if (HasCollision(newRoom))
@@ -81,22 +87,41 @@ public class DungeonBuilder
         return newRoom;
     }
 
-    private Point CalculateNewRoomPosition(Exit exit, Room fromRoom)
+    private Point CalculateNewRoomPosition(Exit exit, Room fromRoom, Room newRoom)
     {
         // Position the new room adjacent to the exit
-        // The exit is ON the wall, so the new room should start right next to it
+        // The exit is ON the wall, so the new room should touch it
         Point exitPos = exit.Position;
+        int newWidth = newRoom.Bounds.Width;
+        int newHeight = newRoom.Bounds.Height;
         
         return exit.Direction switch
         {
-            // North: new room's bottom wall should align with this room's top wall
-            Direction.North => new Point(exitPos.X - 2, exitPos.Y - 8),
-            // South: new room's top wall should align with this room's bottom wall  
-            Direction.South => new Point(exitPos.X - 2, exitPos.Y + 1),
-            // East: new room's left wall should align with this room's right wall
-            Direction.East => new Point(exitPos.X + 1, exitPos.Y - 2),
-            // West: new room's right wall should align with this room's left wall
-            Direction.West => new Point(exitPos.X - 8, exitPos.Y - 2),
+            // North: new room's bottom wall touches this room's top wall
+            // exitPos.Y is top wall, new room bottom should be at exitPos.Y - 1
+            Direction.North => new Point(
+                exitPos.X - newWidth / 2,     // Center on exit
+                exitPos.Y - newHeight         // Bottom of new room at top of old room
+            ),
+            
+            // South: new room's top wall touches this room's bottom wall  
+            Direction.South => new Point(
+                exitPos.X - newWidth / 2,     // Center on exit
+                exitPos.Y + 1                 // Top of new room at bottom of old room
+            ),
+            
+            // East: new room's left wall touches this room's right wall
+            Direction.East => new Point(
+                exitPos.X + 1,                // Left of new room at right of old room
+                exitPos.Y - newHeight / 2     // Center on exit
+            ),
+            
+            // West: new room's right wall touches this room's left wall
+            Direction.West => new Point(
+                exitPos.X - newWidth,         // Right of new room at left of old room
+                exitPos.Y - newHeight / 2     // Center on exit
+            ),
+            
             _ => exitPos
         };
     }

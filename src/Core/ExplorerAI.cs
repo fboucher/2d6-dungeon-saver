@@ -108,15 +108,15 @@ public class ExplorerAI
 
     private Exit? FindUnexploredExit()
     {
-        // Look for unexplored exits in visited rooms
-        foreach (var room in _dungeon.Rooms.Where(r => r.IsExplored))
+        // First, look for unexplored exits in the CURRENT room
+        if (_explorer.CurrentRoom != null)
         {
-            foreach (var exit in room.Exits.Where(e => !e.IsExplored))
+            foreach (var exit in _explorer.CurrentRoom.Exits.Where(e => !e.IsExplored))
             {
                 // Generate room at this exit if not already done
                 if (exit.ConnectedRoom == null && _dungeon.Rooms.Count < _dungeon.TargetRoomCount)
                 {
-                    _dungeonBuilder.GenerateRoomAtExit(exit, room);
+                    _dungeonBuilder.GenerateRoomAtExit(exit, _explorer.CurrentRoom);
                 }
                 
                 if (exit.ConnectedRoom != null)
@@ -126,6 +126,8 @@ public class ExplorerAI
             }
         }
         
+        // TODO: If no exits in current room, could navigate to other explored rooms
+        // For now, just wander if no exits in current room
         return null;
     }
 
