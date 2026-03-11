@@ -32,3 +32,23 @@
 
 ## Learnings
 
+### 2025-03 — Fixed double wall bug and unexplored door rendering
+
+**Problem:** Adjacent rooms were rendering with double walls (`##`) instead of sharing a single wall (`#`). Also, unexplored exits showed as `+` in map exports instead of `?`.
+
+**Root Cause:**
+1. `Rectangle.Intersects` used `<=`/`>=` which treated touching rooms as overlapping
+2. `DungeonBuilder.CalculateNewRoomPosition` placed rooms 1 cell too far from exits
+3. `MapExporter.GetCharAt` ignored exit exploration state
+
+**Fixes:**
+1. **src/Utils/Rectangle.cs** — Changed `Intersects` to use strict inequalities (`<` and `>`). Rooms that share a wall edge are now correctly treated as non-overlapping.
+2. **src/Core/DungeonBuilder.cs** — Fixed `CalculateNewRoomPosition` for all 4 directions so adjacent rooms share their boundary wall:
+   - East: new room's LEFT wall = exitPos.X (removed +1)
+   - West: new room's RIGHT wall = exitPos.X (added +1)
+   - South: new room's TOP wall = exitPos.Y (removed +1)
+   - North: new room's BOTTOM wall = exitPos.Y (added +1)
+3. **src/Core/MapExporter.cs** — Fixed `GetCharAt` to return `?` for unexplored exits and `+` for explored ones. Updated legend to include both symbols.
+
+**Key Insight:** Adjacent rooms share walls, not gaps. The exit sits ON the shared wall column/row.
+

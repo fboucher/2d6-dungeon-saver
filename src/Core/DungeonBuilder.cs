@@ -97,28 +97,27 @@ public class DungeonBuilder
         
         return exit.Direction switch
         {
-            // North: new room's bottom wall touches this room's top wall
-            // exitPos.Y is top wall, new room bottom should be at exitPos.Y - 1
+            // North: new room's bottom wall = exitPos.Y
             Direction.North => new Point(
                 exitPos.X - newWidth / 2,     // Center on exit
-                exitPos.Y - newHeight         // Bottom of new room at top of old room
+                exitPos.Y - newHeight + 1     // Bottom wall at exit position
             ),
             
-            // South: new room's top wall touches this room's bottom wall  
+            // South: new room's top wall = exitPos.Y
             Direction.South => new Point(
                 exitPos.X - newWidth / 2,     // Center on exit
-                exitPos.Y + 1                 // Top of new room at bottom of old room
+                exitPos.Y                     // Top wall at exit position
             ),
             
-            // East: new room's left wall touches this room's right wall
+            // East: new room's left wall = exitPos.X
             Direction.East => new Point(
-                exitPos.X + 1,                // Left of new room at right of old room
+                exitPos.X,                    // Left wall at exit position
                 exitPos.Y - newHeight / 2     // Center on exit
             ),
             
-            // West: new room's right wall touches this room's left wall
+            // West: new room's right wall = exitPos.X
             Direction.West => new Point(
-                exitPos.X - newWidth,         // Right of new room at left of old room
+                exitPos.X - newWidth + 1,     // Right wall at exit position
                 exitPos.Y - newHeight / 2     // Center on exit
             ),
             

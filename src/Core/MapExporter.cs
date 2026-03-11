@@ -93,7 +93,8 @@ public class MapExporter
         sb.AppendLine("  # = Wall");
         sb.AppendLine("  . = Floor");
         sb.AppendLine("  : = Corridor");
-        sb.AppendLine("  + = Exit/Door");
+        sb.AppendLine("  + = Exit/Door (Explored)");
+        sb.AppendLine("  ? = Unexplored Exit");
         sb.AppendLine("═══════════════════════════════════════════════════════");
 
         return sb.ToString();
@@ -110,7 +111,7 @@ public class MapExporter
         foreach (var exit in room.Exits)
         {
             if (exit.Position == pos)
-                return '+';
+                return (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true) ? '+' : '?';
         }
 
         // Check if wall

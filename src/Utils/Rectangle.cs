@@ -30,8 +30,8 @@ public struct Rectangle
         point.Y >= Y && point.Y < Y + Height;
     
     public bool Intersects(Rectangle other) =>
-        Left <= other.Right && Right >= other.Left &&
-        Top <= other.Bottom && Bottom >= other.Top;
+        Left < other.Right && Right > other.Left &&
+        Top < other.Bottom && Bottom > other.Top;
     
     public override string ToString() => $"Rect({X},{Y} {Width}x{Height})";
 }
