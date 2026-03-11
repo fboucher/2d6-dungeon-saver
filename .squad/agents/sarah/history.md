@@ -66,3 +66,25 @@
 
 **Key Insight:** Movement should be continuous. No position overrides. The pathfinder already treats exits as walkable, so extending paths to cross room boundaries creates natural frame-by-frame transitions.
 
+### 2025-03 — Added movement trace logging for diagnostics
+
+**Problem:** Explorer was observed jumping to disconnected areas. Needed diagnostic trace to identify root cause of teleportation issues.
+
+**Solution:** Implemented comprehensive movement trace logging system capturing all significant movement events.
+
+**Implementation:**
+1. **src/Models/Explorer.cs** — Added `MovementEvent` record and `MovementTrace` list with `AddTrace()` method that caps at 1000 events (rolling buffer).
+2. **src/Core/ExplorerAI.cs** — Added trace logging for:
+   - `Move`: Every position change with from/to coordinates
+   - `ExitCrossed`: When explorer crosses an exit threshold
+   - `RoomSwitch`: When CurrentRoom changes (logs from/to room IDs)
+   - `PathPlanned`: When path is calculated to an exit
+   - `PathFallback`: When pathfinder returns fallback direct line (potential smoking gun)
+3. **src/Core/MapExporter.cs** — Added movement trace section to map export:
+   - Shows last 500 events (capped for readability)
+   - Groups consecutive Move events in same room ("Move x5 Room:2 (10,12)→(15,12)")
+   - Formats with timestamps, action types, room IDs, positions, and details
+4. **src/Core/GameLoop.cs** — Updated `ExportMap` call to pass `_explorer` parameter.
+
+**Key Insight:** Diagnostic traces are essential for debugging complex state machines. The trace captures the complete movement history, making it easy to identify when and why unexpected position changes occur.
+
