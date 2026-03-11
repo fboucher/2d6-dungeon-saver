@@ -1,0 +1,52 @@
+{
+  "agents": [
+    {
+      "persistent_name": "Jareth",
+      "role": "Lead",
+      "universe": "Labyrinth (1986)",
+      "created_at": "2026-03-11T12:07:25Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    {
+      "persistent_name": "Sarah",
+      "role": "C# Developer",
+      "universe": "Labyrinth (1986)",
+      "created_at": "2026-03-11T12:07:25Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    {
+      "persistent_name": "Hoggle",
+      "role": "Rendering Developer",
+      "universe": "Labyrinth (1986)",
+      "created_at": "2026-03-11T12:07:25Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    {
+      "persistent_name": "Sir Didymus",
+      "role": "Tester",
+      "universe": "Labyrinth (1986)",
+      "created_at": "2026-03-11T12:07:25Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    {
+      "persistent_name": "Scribe",
+      "role": "Session Logger",
+      "universe": "exempt",
+      "created_at": "2026-03-11T12:07:25Z",
+      "legacy_named": false,
+      "status": "active"
+    },
+    {
+      "persistent_name": "Ralph",
+      "role": "Work Monitor",
+      "universe": "exempt",
+      "created_at": "2026-03-11T12:07:25Z",
+      "legacy_named": false,
+      "status": "active"
+    }
+  ]
+}
