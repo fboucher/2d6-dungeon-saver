@@ -52,3 +52,17 @@
 
 **Key Insight:** Adjacent rooms share walls, not gaps. The exit sits ON the shared wall column/row.
 
+### 2025-03 — Fixed explorer teleportation through doors
+
+**Problem:** When the explorer reached a door (exit tile), they would instantly teleport to the middle of the new room instead of walking through frame by frame.
+
+**Root Cause:** `CheckExitCrossing` in `src/Core/ExplorerAI.cs` was overriding `_explorer.Position` to a point deep inside the connected room and clearing the path. This caused instant teleportation instead of continuous movement.
+
+**Fixes:**
+1. **src/Core/ExplorerAI.cs** — Simplified `CheckExitCrossing` to only mark exits as explored and reveal connected rooms. Removed position override and path clearing. `UpdateCurrentRoom` already handles room transitions naturally.
+2. **src/Core/ExplorerAI.cs** — Enhanced `UpdateCurrentRoom` to detect when the explorer is on an exit tile and has moved into the connected room's bounds, properly transitioning CurrentRoom.
+3. **src/Core/ExplorerAI.cs** — Updated `NavigateToExit` to path one step INTO the connected room (not just TO the exit tile), creating a continuous walking path through the door.
+4. **src/Core/Pathfinder.cs** — Extended `FindPath` to accept an optional connected room parameter, allowing cross-room pathing through exit tiles.
+
+**Key Insight:** Movement should be continuous. No position overrides. The pathfinder already treats exits as walkable, so extending paths to cross room boundaries creates natural frame-by-frame transitions.
+
