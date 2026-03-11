@@ -10,9 +10,11 @@ namespace DungeonSaver.Core;
 public class MapExporter
 {
     private const string MAP_FOLDER = "maps";
+    private readonly bool _showRoomIds;
 
-    public MapExporter()
+    public MapExporter(bool showRoomIds = false)
     {
+        _showRoomIds = showRoomIds;
         // Ensure maps folder exists
         if (!Directory.Exists(MAP_FOLDER))
         {
@@ -95,6 +97,7 @@ public class MapExporter
         sb.AppendLine("  : = Corridor");
         sb.AppendLine("  + = Exit/Door (Explored)");
         sb.AppendLine("  ? = Unexplored Exit");
+        sb.AppendLine("  X = Sealed/Blocked Exit");
         sb.AppendLine("═══════════════════════════════════════════════════════");
 
         // Add movement trace
@@ -116,18 +119,31 @@ public class MapExporter
         if (room == null)
             return ' ';
 
-        // Check if exit
+        // Check if exit (blocked exits show as X, explored as +, unexplored as ?)
         foreach (var exit in room.Exits)
         {
             if (exit.Position == pos)
+            {
+                if (exit.IsBlocked) return 'X';
                 return (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true) ? '+' : '?';
+            }
         }
 
         // Check if wall
         if (IsWall(room, pos))
             return '#';
 
-        // Floor
+        // Floor — optionally overlay room ID at interior centre
+        if (_showRoomIds)
+        {
+            string idStr = room.Id.ToString();
+            int centerX = room.Bounds.X + room.Bounds.Width / 2;
+            int centerY = room.Bounds.Y + room.Bounds.Height / 2;
+            int startX = centerX - idStr.Length / 2;
+            if (pos.Y == centerY && pos.X >= startX && pos.X < startX + idStr.Length)
+                return idStr[pos.X - startX];
+        }
+
         return room.Type == RoomType.Corridor ? ':' : '.';
     }
 

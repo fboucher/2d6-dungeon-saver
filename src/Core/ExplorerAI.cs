@@ -374,6 +374,12 @@ public class ExplorerAI
             {
                 exit.IsExplored = true;
                 
+                // Also mark the back-exit in the connected room so BFS can traverse back
+                var backExit = exit.ConnectedRoom.Exits
+                    .FirstOrDefault(e => e.Position == position && e.ConnectedRoom == _explorer.CurrentRoom);
+                if (backExit != null)
+                    backExit.IsExplored = true;
+                
                 // Log exit crossing
                 _explorer.AddTrace(new MovementEvent(
                     DateTime.Now,

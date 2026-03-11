@@ -96,7 +96,7 @@ public class DungeonBuilder
                     // Truly can't place a room — block the exit
                     exit.IsBlocked = true;
                     _dungeon.Messages.Add(
-                        $"A passage is sealed — no room could be placed beyond it (exit {exit.Direction}).");
+                        $"A passage is sealed — no room could be placed beyond it (Room {fromRoom.Id}, exit {exit.Direction}).");
                     return null;
                 }
             }
@@ -107,9 +107,11 @@ public class DungeonBuilder
         // Ensure room stays within boundary (adjust if needed)
         newRoom = ClampToBoundary(newRoom);
         
-        // Generate exits for the new room (entrance is from the connected exit)
+        // Generate exits for the new room, then add a back-exit so BFS can traverse back
         Direction entranceDir = GetOppositeDirection(exit.Direction);
         _exitGenerator.GenerateExits(newRoom, entranceDir);
+        var backExit = new Exit(exit.Position, entranceDir) { ConnectedRoom = fromRoom };
+        newRoom.Exits.Add(backExit);
         
         // Connect the rooms
         exit.ConnectedRoom = newRoom;
