@@ -196,16 +196,12 @@ public class ExplorerAI
                 continue;
             visited.Add(current.Id);
 
-            // Does this room have unexplored exits?
-            bool hasUnexplored = current.Exits.Any(e =>
-                !e.IsExplored && e.ConnectedRoom != null);
+            // Does this room have any exits not yet marked explored?
+            // (Includes exits with connected rooms to enter AND exits that may still
+            // generate a room or will be marked dead-end when the explorer arrives.)
+            bool hasUnexplored = current.Exits.Any(e => !e.IsExplored);
 
-            // Also: unexplored exits with no connected room yet but dungeon can still grow
-            bool canGenerate = current.Exits.Any(e =>
-                !e.IsExplored && e.ConnectedRoom == null &&
-                _dungeon.Rooms.Count < _dungeon.TargetRoomCount);
-
-            if (hasUnexplored || canGenerate)
+            if (hasUnexplored)
             {
                 // Log backtracking decision
                 _explorer.AddTrace(new MovementEvent(
