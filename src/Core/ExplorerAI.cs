@@ -115,26 +115,25 @@ public class ExplorerAI
 
     private void DecideNextDestination()
     {
-        // First priority: Find unexplored exits in current room
+        // Priority 1: Unexplored exit in current room
         var unexploredExit = FindUnexploredExit();
-        
         if (unexploredExit != null)
         {
             _explorer.State = ExplorerState.Moving;
             NavigateToExit(unexploredExit);
             return;
         }
-        
-        // Second priority: Go back to a room that has unexplored exits
-        var exitToOtherRoom = FindExitToRoomWithUnexploredExits();
-        if (exitToOtherRoom != null)
+
+        // Priority 2: BFS to find nearest room with unexplored exits — backtrack via explored doors
+        var backtrackExit = FindPathToNearestUnexploredExit();
+        if (backtrackExit != null)
         {
             _explorer.State = ExplorerState.Moving;
-            NavigateToExit(exitToOtherRoom);
+            NavigateToExit(backtrackExit);
             return;
         }
-        
-        // No unexplored exits anywhere - just wander
+
+        // Priority 3: Dungeon fully explored — wander
         _explorer.State = ExplorerState.Wandering;
         WanderRandomly();
     }
@@ -156,29 +155,77 @@ public class ExplorerAI
                 {
                     return exit;
                 }
+                else
+                {
+                    // Dead end: couldn't place a room here. Mark as explored so we don't retry forever.
+                    exit.IsExplored = true;
+                }
             }
         }
         
         return null;
     }
 
-    private Exit? FindExitToRoomWithUnexploredExits()
+    /// <summary>
+    /// BFS through connected explored rooms to find the nearest room with unexplored exits.
+    /// Returns the exit in the CURRENT room to take as the first step toward that room.
+    /// Returns null if all reachable rooms are fully explored.
+    /// </summary>
+    private Exit? FindPathToNearestUnexploredExit()
     {
-        // Find an explored exit in current room that leads to a room with unexplored exits
         if (_explorer.CurrentRoom == null)
             return null;
 
-        foreach (var exit in _explorer.CurrentRoom.Exits.Where(e => e.IsExplored && e.ConnectedRoom != null))
+        // BFS: queue holds (room, firstExitFromCurrentRoom)
+        // firstExit = the exit in CurrentRoom we'd take to start the journey
+        var visited = new HashSet<int> { _explorer.CurrentRoom.Id };
+        var queue = new Queue<(Room room, Exit firstExit)>();
+
+        // Seed with all explored exits from current room
+        foreach (var exit in _explorer.CurrentRoom.Exits
+            .Where(e => e.IsExplored && e.ConnectedRoom != null))
         {
-            var connectedRoom = exit.ConnectedRoom;
-            if (connectedRoom != null && connectedRoom.Exits.Any(e => !e.IsExplored))
+            queue.Enqueue((exit.ConnectedRoom!, exit));
+        }
+
+        while (queue.Count > 0)
+        {
+            var (current, firstExit) = queue.Dequeue();
+
+            if (visited.Contains(current.Id))
+                continue;
+            visited.Add(current.Id);
+
+            // Does this room have unexplored exits?
+            bool hasUnexplored = current.Exits.Any(e =>
+                !e.IsExplored && e.ConnectedRoom != null);
+
+            // Also: unexplored exits with no connected room yet but dungeon can still grow
+            bool canGenerate = current.Exits.Any(e =>
+                !e.IsExplored && e.ConnectedRoom == null &&
+                _dungeon.Rooms.Count < _dungeon.TargetRoomCount);
+
+            if (hasUnexplored || canGenerate)
             {
-                // This room has unexplored exits, go back to it
-                return exit;
+                // Log backtracking decision
+                _explorer.AddTrace(new MovementEvent(
+                    DateTime.Now, _explorer.Position, firstExit.Position,
+                    "Backtrack", _explorer.CurrentRoom?.Id,
+                    $"HeadingTo:{firstExit.Direction} ToFindUnexplored"
+                ));
+                return firstExit; // Take this exit from current room to start the journey
+            }
+
+            // Keep searching — enqueue this room's explored exits
+            foreach (var exit in current.Exits
+                .Where(e => e.IsExplored && e.ConnectedRoom != null
+                         && !visited.Contains(e.ConnectedRoom.Id)))
+            {
+                queue.Enqueue((exit.ConnectedRoom!, firstExit));
             }
         }
 
-        return null;
+        return null; // All reachable rooms fully explored
     }
 
     private void NavigateToExit(Exit exit)
