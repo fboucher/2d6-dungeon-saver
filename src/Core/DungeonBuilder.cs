@@ -57,6 +57,10 @@ public class DungeonBuilder
             newRoom.Bounds.Height
         );
         
+        // Shift the room by 1 if its perpendicular walls are immediately adjacent to an
+        // existing room — prevents visual double-walls and blocked exit generation.
+        newRoom = EnsureSeparation(newRoom, exit.Direction);
+
         // Check for collisions with existing rooms
         if (HasCollision(newRoom))
         {
@@ -77,6 +81,7 @@ public class DungeonBuilder
                         candidate.Bounds.Width,
                         candidate.Bounds.Height
                     );
+                    candidate = EnsureSeparation(candidate, exit.Direction);
                     adjustedRoom = HasCollision(candidate)
                         ? TryAdjustRoomPosition(candidate, exit)
                         : candidate;
@@ -191,6 +196,48 @@ public class DungeonBuilder
         }
         
         return null;
+    }
+
+    /// <summary>
+    /// Shifts a newly positioned room by 1 unit if its perpendicular walls are
+    /// immediately adjacent to an existing room, preventing visual double-walls.
+    /// Only shifts on the axis perpendicular to the exit direction.
+    /// </summary>
+    private Room EnsureSeparation(Room newRoom, Direction exitDirection)
+    {
+        bool isVerticalExit = exitDirection == Direction.North || exitDirection == Direction.South;
+
+        foreach (var existing in _dungeon.Rooms)
+        {
+            if (isVerticalExit)
+            {
+                // For North/South exits, check left/right adjacency (X axis)
+                if (existing.Bounds.Right + 1 == newRoom.Bounds.Left)
+                    return new Room(newRoom.Id, new Rectangle(
+                        newRoom.Bounds.X + 1, newRoom.Bounds.Y,
+                        newRoom.Bounds.Width, newRoom.Bounds.Height), newRoom.Type);
+
+                if (newRoom.Bounds.Right + 1 == existing.Bounds.Left)
+                    return new Room(newRoom.Id, new Rectangle(
+                        newRoom.Bounds.X - 1, newRoom.Bounds.Y,
+                        newRoom.Bounds.Width, newRoom.Bounds.Height), newRoom.Type);
+            }
+            else
+            {
+                // For East/West exits, check top/bottom adjacency (Y axis)
+                if (existing.Bounds.Bottom + 1 == newRoom.Bounds.Top)
+                    return new Room(newRoom.Id, new Rectangle(
+                        newRoom.Bounds.X, newRoom.Bounds.Y + 1,
+                        newRoom.Bounds.Width, newRoom.Bounds.Height), newRoom.Type);
+
+                if (newRoom.Bounds.Bottom + 1 == existing.Bounds.Top)
+                    return new Room(newRoom.Id, new Rectangle(
+                        newRoom.Bounds.X, newRoom.Bounds.Y - 1,
+                        newRoom.Bounds.Width, newRoom.Bounds.Height), newRoom.Type);
+            }
+        }
+
+        return newRoom;
     }
 
     private Room ClampToBoundary(Room room)
