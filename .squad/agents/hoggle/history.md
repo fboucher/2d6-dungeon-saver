@@ -30,5 +30,52 @@
 - `docs/Rules.md` — technical design doc
 - `docs/2d6-flow-page1.png`, `docs/2d6-flow-page2.png` — game flow diagrams
 
+## Room Adjacency Model: Shared-Wall (2026-03-11)
+
+**Critical Model for Your Work:** Adjacent rooms in the dungeon **SHARE their boundary wall**, not create separate walls with a gap.
+
+### The Model
+
+When two rooms are adjacent via an exit:
+- The exit position sits ON the shared wall coordinate
+- The new room's boundary edge is placed AT the exit position (same coordinate as parent room's opposite edge)
+- There is NO gap between rooms
+- `Rectangle.Intersects` uses strict inequalities (`<`, `>`), so touching rooms are NOT flagged as collisions
+
+### Example: East Exit
+
+```
+Parent Room (columns 0-10)        New Room (columns 10-20)
+         v shared wall
+         10
+  0------+-------10  10---------+--------20
+  |      |        |  |          |         |
+  | ROOM |        |  |  NEW RM  |         |
+  |      |        |  |          |         |
+  0------+-------10  10---------+--------20
+         ^ exit here on shared wall
+```
+
+The exit (`+`) appears at column 10, which is both the parent room's right edge and the new room's left edge.
+
+### Rendering
+
+- `GetRoomAt(position)` returns the parent room at the shared wall coordinate
+- Exit rendering is checked BEFORE wall rendering
+- Result: `+` displays on the shared wall (not a double `##`)
+
+### Map Symbols
+
+- `#` — room wall
+- `?` — unexplored exit
+- `+` — explored exit
+- `.` — empty floor/interior
+
+### Files to Know
+
+- `src/Utils/Rectangle.cs` — `Intersects` method (strict inequalities)
+- `src/Core/DungeonBuilder.cs` — `CalculateNewRoomPosition` (implements shared-wall placement)
+- `src/Rendering/MapExporter.cs` — `GetCharAt` (renders symbols correctly)
+
 ## Learnings
 

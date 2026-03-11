@@ -73,3 +73,32 @@
 - Re-run tests to validate all 21 tests pass
 - Tests serve as regression coverage going forward
 
+### 2025-03-11: Corrected test assertions from gap model to shared-wall model
+
+**Context:** Sarah correctly implemented shared-wall model in production code, but my tests were asserting gap model expectations (wrong).
+
+**The Two Models:**
+- **Gap model (WRONG):** Adjacent rooms have a gap between them (e.g., East: `newRoom.Left == parentRoom.Right + 1`)
+  - Results in visual double-wall bug: parent's `#` wall + gap + new room's `#` wall = `##`
+- **Shared wall model (CORRECT):** Adjacent rooms share the same boundary column/row (e.g., East: `newRoom.Left == parentRoom.Right`)
+  - `GetRoomAt(pos)` returns the parent room first at the shared column
+  - Exit (`+`) is checked before wall rendering, so it renders as `+` over the shared column — no double wall
+  - Visually: single `#` column serves as both rooms' boundary ✓
+
+**Changes Made:**
+Fixed 5 failing tests in `DungeonBuilderTests.cs`:
+1. `GenerateRoomAtExit_East_NewRoomSharesWallWithParent` - Changed `Right + 1` → `Right` (shared column)
+2. `GenerateRoomAtExit_West_NewRoomSharesWallWithParent` - Changed `Left - 1` → `Left` (shared column)
+3. `GenerateRoomAtExit_South_NewRoomSharesWallWithParent` - Changed `Bottom + 1` → `Bottom` (shared row)
+4. `GenerateRoomAtExit_North_NewRoomSharesWallWithParent` - Changed `Top - 1` → `Top` (shared row)
+5. `GenerateRoomAtExit_NoDoubleWall_BetweenAdjacentRooms` - Changed `Right + 1` → `Right` (shared wall)
+
+**Test Results:**
+- All 21 tests now pass ✓
+- Tests correctly validate shared-wall model behavior
+
+**Key Learnings:**
+- Shared wall model means rooms share their boundary column/row (same coordinate, not adjacent)
+- `Rectangle.Intersects` uses strict inequalities (`<`, `>`), so touching rooms (shared wall) are NOT flagged as collisions
+- Exit rendering checks happen before wall rendering, allowing `+` to display on the shared boundary
+
