@@ -92,6 +92,116 @@ When the explorer reaches an exit:
 - `src/Core/ExplorerAI.cs` — movement and room transition logic
 - `src/Core/Pathfinder.cs` — cross-room pathfinding
 
+### Root Cause: Explorer Teleportation
+
+**Date:** 2026-03-11  
+**Diagnosed by:** Jareth (Explorer & Pathfinder)  
+**Status:** Documented
+
+#### Context
+
+Explorer was teleporting to disconnected room areas, breaking continuous movement immersion. Investigation revealed a collision between pathfinder fallback logic and room position adjustments.
+
+#### Root Cause
+
+**Primary:** Unconditional fallback path in `Pathfinder.FindPath`. When A* exhausts neighbors, returns `{ start, goal }` without validating walkability, enabling direct jumps of any distance.
+
+**Secondary:** `GetStepInsideRoom` assumes target is exactly one step from exit, but `TryAdjustRoomPosition` can offset rooms ±2 squares, placing calculated targets in empty space. This breaks path validation and forces fallback.
+
+**Tertiary:** When fallback jump lands in adjusted room, `UpdateCurrentRoom` shared-wall peek-ahead fails to detect transition, leaving `CurrentRoom` stale. Subsequent pathfinding treats old room as current, causing cascading disconnections.
+
+#### Technical Details
+
+- **Evidence location 1:** `Pathfinder.FindPath (line 76-77)` returns unconditional fallback
+- **Evidence location 2:** `NavigateToExit (lines 173-205)` calculates target without validating against adjusted room bounds
+- **Evidence location 3:** `GetStepInsideRoom (lines 207-220)` assumes fixed one-step offset (no adjustment awareness)
+- **Evidence location 4:** `TryAdjustRoomPosition (lines 138-164)` moves room without re-validating exit-to-interior path
+- **Evidence location 5:** `UpdateCurrentRoom (line 73)` uses stale room bounds after adjustment
+
+#### Recommended Fix
+
+1. **Validate target before pathfinding:** In `NavigateToExit`, after calculating target, verify `targetRoom.Contains(target)`. If not, adjust to valid interior floor point.
+
+2. **Validate fallback path:** In `FindPath`, before returning `{ start, goal }`, check if goal is actually reachable. If not, return empty path and let ExplorerAI handle it (don't silently jump).
+
+3. **Sync room position after adjustment:** In `DungeonBuilder.GenerateRoomAtExit`, after `TryAdjustRoomPosition`, recalculate entry target using final room bounds.
+
+4. **Strengthen room transition validation:** In `UpdateCurrentRoom`, after room switch, validate new room is connected to known exit. If switch was caused by fallback jump into floating room, revert and flag error.
+
+#### Trace Requirements
+
+To verify the fix, capture and correlate:
+- Room generation trace (initial position → collision check → adjustment → final bounds)
+- Pathfinding trace (start/goal/result, fallback triggers)
+- Movement trace (position changes, room switches, mismatches)
+- Exit crossing trace (exit position, target calculated, connected room bounds)
+
+**Related decision:** Movement Trace Event Format (Sarah, 2026-03-11)
+
+#### Related Files
+
+- `src/Core/Pathfinder.cs` — fallback logic and validation
+- `src/Core/ExplorerAI.cs` — path following and room updates
+- `src/Core/DungeonBuilder.cs` — room positioning and adjustment
+- `src/Models/Explorer.cs` — movement trace (newly added)
+- `src/Core/MapExporter.cs` — trace export
+
+### Movement Trace Event Format
+
+**Date:** 2026-03-11  
+**Implemented by:** Sarah (C# Developer)  
+**Status:** Implemented
+
+#### Decision
+
+Capture all significant movement events in a structured, timestamped trace. This enables post-mortem debugging of explorer movement issues (e.g., teleportation) by providing a complete event history.
+
+#### Event Types
+
+1. **Move** — Basic position change within same room
+2. **ExitCrossed** — Explorer stepped onto exit tile with direction and connected room info
+3. **RoomSwitch** — CurrentRoom changed during movement
+4. **PathPlanned** — Path calculated to an exit with step count
+5. **PathFallback** — Pathfinder returned fallback direct jump (no valid path found)
+
+#### Implementation
+
+```csharp
+public record MovementEvent(
+    DateTime Timestamp,
+    Point From,
+    Point To,
+    string Action,
+    int? RoomId,
+    string? Detail
+);
+```
+
+**Storage:** Rolling buffer of 1000 events in Explorer (≈ 100KB)  
+**Export:** Last 500 events written to map file with Move grouping  
+**Format:** `{HH:mm:ss.fff} [{Action,-12}] Room:{id,-3} {positions} {detail}`
+
+#### Consequences
+
+**Positive:**
+- Complete diagnostic history of movement
+- PathFallback events directly identify when pathfinding fails
+- Timestamps enable correlation with room generation
+- Grouped output keeps trace readable
+- Memory bounded at 1000 events
+
+**Negative:**
+- Negligible performance overhead per event
+
+#### Related Files
+
+- `src/Models/Explorer.cs` — MovementEvent record + trace buffer
+- `src/Core/ExplorerAI.cs` — event capture instrumentation
+- `src/Core/MapExporter.cs` — trace export and grouping
+- `src/Core/GameLoop.cs` — explorer reference passing
+
+**Related decision:** Root Cause: Explorer Teleportation (Jareth, 2026-03-11)
+
 ## Governance
 
 - All meaningful changes require team consensus

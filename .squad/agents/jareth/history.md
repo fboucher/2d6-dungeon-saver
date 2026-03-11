@@ -79,3 +79,20 @@ The exit (`+`) appears at column 10, which is both the parent room's right edge 
 
 ## Learnings
 
+### Code Pathways (Explorer Jump Diagnosis, 2026-03-11)
+
+**Pathfinder fallback is the teleport vector:** `Pathfinder.FindPath` (line 76-77) unconditionally returns `{ start, goal }` when A* fails. This is a **direct-line fallback with no validation**—it will jump the explorer across empty space if the goal is unreachable.
+
+**TryAdjustRoomPosition breaks entry points:** When collision avoidance moves a room by ±1 or ±2 squares (line 141-164 in DungeonBuilder), the room's interior shifts. But `GetStepInsideRoom` (ExplorerAI line 207-220) assumes the interior is exactly one step from the exit. If the room was adjusted, that target point may be outside both the original and adjusted room bounds, causing A* to fail and trigger fallback.
+
+**Shared-wall model hidden assumption:** The decision document (decisions.md) says rooms share walls and exits are on the boundary. But when a room is adjusted, the exit position (on the original shared wall) no longer aligns with the adjusted room's interior. Code assumes static room positions; adjustments break this contract invisibly.
+
+**Stale path context after room adjustment:** ExplorerAI's `NavigateToExit` (line 193-198) calls `FindPath(start, target, currentRoom, targetRoom)`. If `targetRoom` was adjusted after generation, the pathfinder's `IsWalkable` checks (line 143-154) still use the stale `connectedRoom` bounds, not the room's actual position in the dungeon.
+
+**UpdateCurrentRoom weak transition detection:** The shared-wall peek-ahead check (line 73: `exit.ConnectedRoom.Bounds.Contains(_explorer.Position)`) only works if the explorer is at least one step into the adjusted room's interior. But if the explorer jumps via fallback to a floating disconnected room, this check may falsely pass or the room may not exist in GetRoomAt, leaving CurrentRoom stale.
+
+**Recommendation priority:**
+1. **Immediate:** Kill the fallback path. Return empty list, not `{ start, goal }`. This prevents silent jumps.
+2. **Short-term:** Validate targets in `NavigateToExit` before pathfinding. Ensure target is inside the connected room.
+3. **Long-term:** Decouple exit position from room bounds. Store room position changes and update exit references.
+
