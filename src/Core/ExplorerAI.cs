@@ -59,6 +59,26 @@ public class ExplorerAI
     {
         var room = _dungeon.GetRoomAt(_explorer.Position);
         
+        // Also check: is explorer on an exit tile that leads to a connected room?
+        // The exit tile belongs to the parent room via GetRoomAt (shared-wall model),
+        // but if the explorer's path continues into the connected room, they're transitioning.
+        if (room != null && _explorer.CurrentRoom != null && room == _explorer.CurrentRoom)
+        {
+            // Check if standing on an explored exit
+            foreach (var exit in _explorer.CurrentRoom.Exits)
+            {
+                if (exit.Position == _explorer.Position && exit.ConnectedRoom != null && exit.IsExplored)
+                {
+                    // Explorer is on the threshold — check if they've moved into the connected room's interior
+                    if (exit.ConnectedRoom.Bounds.Contains(_explorer.Position))
+                    {
+                        room = exit.ConnectedRoom;
+                        break;
+                    }
+                }
+            }
+        }
+        
         if (room != null && room != _explorer.CurrentRoom)
         {
             // Entering a new room
@@ -155,11 +175,26 @@ public class ExplorerAI
         if (_explorer.CurrentRoom == null)
             return;
 
-        // Create path to exit position
+        Point target;
+        Room? targetRoom = null;
+        
+        // If this exit leads to a connected room, path to one step inside it
+        if (exit.ConnectedRoom != null)
+        {
+            target = GetStepInsideRoom(exit);
+            targetRoom = exit.ConnectedRoom;
+        }
+        else
+        {
+            target = exit.Position;
+        }
+
+        // Create path to target
         _explorer.CurrentPath = _pathfinder.FindPath(
             _explorer.Position,
-            exit.Position,
-            _explorer.CurrentRoom
+            target,
+            _explorer.CurrentRoom,
+            targetRoom
         );
 
         // Remove current position from path
@@ -167,6 +202,21 @@ public class ExplorerAI
         {
             _explorer.CurrentPath.RemoveAt(0);
         }
+    }
+
+    private Point GetStepInsideRoom(Exit exit)
+    {
+        if (exit.ConnectedRoom == null) return exit.Position;
+        
+        // One step past the shared wall into the connected room's floor
+        return exit.Direction switch
+        {
+            Direction.North => new Point(exit.Position.X, exit.Position.Y - 1),
+            Direction.South => new Point(exit.Position.X, exit.Position.Y + 1),
+            Direction.East  => new Point(exit.Position.X + 1, exit.Position.Y),
+            Direction.West  => new Point(exit.Position.X - 1, exit.Position.Y),
+            _ => exit.Position
+        };
     }
 
     private void WanderRandomly()
@@ -220,21 +270,10 @@ public class ExplorerAI
             {
                 exit.IsExplored = true;
                 
-                // Move explorer into the connected room
-                var connectedRoom = exit.ConnectedRoom;
-                
-                // Find the entrance point in the connected room
-                // It should be on the opposite wall from where we're coming
-                Point entrancePos = GetEntrancePosition(exit, connectedRoom);
-                
-                _explorer.Position = entrancePos;
-                _explorer.CurrentRoom = connectedRoom;
-                _explorer.CurrentPath.Clear(); // Clear path since we're in a new room
-                
                 // Make the connected room visible
-                if (!connectedRoom.IsVisible)
+                if (!exit.ConnectedRoom.IsVisible)
                 {
-                    connectedRoom.IsVisible = true;
+                    exit.ConnectedRoom.IsVisible = true;
                 }
                 
                 break;
@@ -242,23 +281,4 @@ public class ExplorerAI
         }
     }
 
-    private Point GetEntrancePosition(Exit exit, Room connectedRoom)
-    {
-        // Find a floor position just inside the connected room
-        // based on which direction we're entering from
-        Rectangle bounds = connectedRoom.Bounds;
-        
-        return exit.Direction switch
-        {
-            // Coming from south, enter near north wall
-            Direction.North => new Point(bounds.X + bounds.Width / 2, bounds.Y + 1),
-            // Coming from north, enter near south wall
-            Direction.South => new Point(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height - 2),
-            // Coming from west, enter near east wall
-            Direction.East => new Point(bounds.X + bounds.Width - 2, bounds.Y + bounds.Height / 2),
-            // Coming from east, enter near west wall
-            Direction.West => new Point(bounds.X + 1, bounds.Y + bounds.Height / 2),
-            _ => new Point(bounds.X + 1, bounds.Y + 1)
-        };
-    }
 }

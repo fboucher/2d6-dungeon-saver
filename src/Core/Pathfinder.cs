@@ -23,9 +23,9 @@ public class Pathfinder
     }
 
     /// <summary>
-    /// Find a path from start to goal within a room
+    /// Find a path from start to goal within a room, optionally crossing into a connected room
     /// </summary>
-    public List<Point> FindPath(Point start, Point goal, Room room)
+    public List<Point> FindPath(Point start, Point goal, Room room, Room? connectedRoom = null)
     {
         var openSet = new List<PathNode>();
         var closedSet = new HashSet<Point>();
@@ -47,7 +47,7 @@ public class Pathfinder
             closedSet.Add(current.Position);
 
             // Check neighbors
-            foreach (var neighbor in GetNeighbors(current.Position, room))
+            foreach (var neighbor in GetNeighbors(current.Position, room, connectedRoom))
             {
                 if (closedSet.Contains(neighbor))
                     continue;
@@ -103,7 +103,7 @@ public class Pathfinder
         return path;
     }
 
-    private List<Point> GetNeighbors(Point pos, Room room)
+    private List<Point> GetNeighbors(Point pos, Room room, Room? connectedRoom = null)
     {
         var neighbors = new List<Point>
         {
@@ -114,30 +114,46 @@ public class Pathfinder
         };
 
         // Filter to positions that are walkable (inside room and either floor or exit)
-        return neighbors.Where(p => IsWalkable(p, room)).ToList();
+        return neighbors.Where(p => IsWalkable(p, room, connectedRoom)).ToList();
     }
 
-    private bool IsWalkable(Point pos, Room room)
+    private bool IsWalkable(Point pos, Room room, Room? connectedRoom = null)
     {
-        // Must be within room bounds
-        if (!room.Contains(pos))
-            return false;
+        // Check if walkable in the primary room
+        if (room.Contains(pos))
+        {
+            // Check if it's an exit (exits are walkable)
+            if (room.Exits.Any(e => e.Position == pos))
+                return true;
 
-        // Check if it's an exit (exits are walkable)
-        if (room.Exits.Any(e => e.Position == pos))
-            return true;
+            // Check if it's a wall (walls are not walkable unless they're exits)
+            Rectangle bounds = room.Bounds;
+            bool onLeft = pos.X == bounds.Left;
+            bool onRight = pos.X == bounds.Right;
+            bool onTop = pos.Y == bounds.Top;
+            bool onBottom = pos.Y == bounds.Bottom;
+            
+            bool isWall = onLeft || onRight || onTop || onBottom;
+            
+            // Floor is walkable, walls are not (unless exit, which we checked above)
+            return !isWall;
+        }
 
-        // Check if it's a wall (walls are not walkable unless they're exits)
-        Rectangle bounds = room.Bounds;
-        bool onLeft = pos.X == bounds.Left;
-        bool onRight = pos.X == bounds.Right;
-        bool onTop = pos.Y == bounds.Top;
-        bool onBottom = pos.Y == bounds.Bottom;
-        
-        bool isWall = onLeft || onRight || onTop || onBottom;
-        
-        // Floor is walkable, walls are not (unless exit, which we checked above)
-        return !isWall;
+        // Also check if walkable in the connected room (for cross-room pathing)
+        if (connectedRoom != null && connectedRoom.Contains(pos))
+        {
+            Rectangle bounds = connectedRoom.Bounds;
+            bool onLeft = pos.X == bounds.Left;
+            bool onRight = pos.X == bounds.Right;
+            bool onTop = pos.Y == bounds.Top;
+            bool onBottom = pos.Y == bounds.Bottom;
+            
+            bool isWall = onLeft || onRight || onTop || onBottom;
+            
+            return !isWall;
+        }
+
+        return false;
     }
 
     private int ManhattanDistance(Point a, Point b)
