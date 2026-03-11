@@ -32,3 +32,44 @@
 
 ## Learnings
 
+### 2025-03-11: Created comprehensive regression test suite for double-wall and door symbol bugs
+
+**Context:** Sarah (Builder) is fixing two critical bugs:
+1. Double walls between adjacent rooms (rooms placed with gap instead of shared wall)
+2. Unexplored exits rendering as `+` instead of `?` in map export
+
+**Actions Taken:**
+- Created test project `tests/DungeonSaver.Tests/` using xUnit (no test project existed)
+- Added project to solution file `2d6-dungeon-saver.sln`
+- Wrote `RectangleTests.cs` (7 tests) - validates that Rectangle.Intersects correctly treats touching rectangles as non-intersecting (strict inequality)
+- Wrote `DungeonBuilderTests.cs` (6 tests) - validates room positioning ensures adjacent rooms share walls without gaps or double-walls
+- Wrote `MapExporterTests.cs` (8 tests) - validates exit symbols render as `?` for unexplored, `+` for explored or visible-connected-room
+
+**Test Results (Pre-fix baseline):**
+- Total: 21 tests
+- Passed: 16 tests (RectangleTests: 7/7, MapExporterTests: 8/8, DungeonBuilderTests: 1/6)
+- Failed: 5 tests (all in DungeonBuilderTests - room positioning tests)
+
+**Key Findings:**
+- `Rectangle.Intersects` fix already applied (uses strict `<` and `>`, not `<=` and `>=`)
+- `MapExporter.GetCharAt` fix already applied (checks `exit.IsExplored || exit.ConnectedRoom?.IsVisible`)
+- `DungeonBuilder.CalculateNewRoomPosition` NOT yet fixed - still producing off-by-one positioning errors
+
+**Failed Tests (Awaiting fix):**
+1. `GenerateRoomAtExit_East_NewRoomSharesWallWithParent` - Expected X=18, Actual X=17
+2. `GenerateRoomAtExit_West_NewRoomSharesWallWithParent` - Expected X=19, Actual X=20
+3. `GenerateRoomAtExit_South_NewRoomSharesWallWithParent` - Expected Y=16, Actual Y=15
+4. `GenerateRoomAtExit_North_NewRoomSharesWallWithParent` - Expected Y=19, Actual Y=20
+5. `GenerateRoomAtExit_NoDoubleWall_BetweenAdjacentRooms` - Position mismatch causing overlap detection
+
+**Technical Notes:**
+- Used reflection to test private `MapExporter.GetCharAt` method (appropriate for internal logic validation)
+- Tests use fixed seeds for deterministic room generation
+- Arrange/Act/Assert pattern throughout, no mocking frameworks (real class instances)
+- Tests validate exact boundary positions to catch off-by-one errors
+
+**Next Steps:**
+- Sarah to apply DungeonBuilder positioning fix
+- Re-run tests to validate all 21 tests pass
+- Tests serve as regression coverage going forward
+
