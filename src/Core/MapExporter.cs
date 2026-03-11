@@ -100,6 +100,12 @@ public class MapExporter
         // Add movement trace
         AppendMovementTrace(sb, explorer);
 
+        // Add messages section if there are any
+        if (dungeon.Messages.Count > 0)
+        {
+            AppendMessages(sb, dungeon);
+        }
+
         return sb.ToString();
     }
 
@@ -258,5 +264,21 @@ public class MapExporter
             string detail = evt.Detail ?? "";
             return $"{time} [{action}] {roomInfo}{positions,-20} {detail}";
         }
+    }
+
+    private void AppendMessages(StringBuilder sb, Dungeon dungeon)
+    {
+        sb.AppendLine();
+        sb.AppendLine("═══════════════════════════════════════════════════════");
+        sb.AppendLine("                      MESSAGES                         ");
+        sb.AppendLine("═══════════════════════════════════════════════════════");
+        sb.AppendLine();
+
+        foreach (var message in dungeon.Messages)
+        {
+            sb.AppendLine(message);
+        }
+
+        sb.AppendLine("═══════════════════════════════════════════════════════");
     }
 }

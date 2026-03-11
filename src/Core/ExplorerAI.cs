@@ -255,6 +255,21 @@ public class ExplorerAI
             targetRoom
         );
 
+        // No route found — mark exit as explored so we don't retry it
+        if (_explorer.CurrentPath.Count == 0)
+        {
+            exit.IsExplored = true;
+            _explorer.AddTrace(new MovementEvent(
+                DateTime.Now,
+                _explorer.Position,
+                exit.Position,
+                "PathBlocked",
+                _explorer.CurrentRoom?.Id,
+                $"ExitDir:{exit.Direction} NoPath"
+            ));
+            return;
+        }
+
         // Log path planning
         _explorer.AddTrace(new MovementEvent(
             DateTime.Now,

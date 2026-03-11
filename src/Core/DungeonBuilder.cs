@@ -60,13 +60,40 @@ public class DungeonBuilder
         // Check for collisions with existing rooms
         if (HasCollision(newRoom))
         {
-            // Try to adjust position slightly
+            // Try to adjust position slightly (axis-constrained)
             Room? adjustedRoom = TryAdjustRoomPosition(newRoom, exit);
             
             if (adjustedRoom == null || HasCollision(adjustedRoom))
             {
-                // Can't place room, mark exit as dead end
-                return null;
+                // Retry up to 3 times with a freshly generated room shape
+                adjustedRoom = null;
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    Room candidate = _roomGenerator.GenerateRoom(new Point(0, 0));
+                    Point candidatePos = CalculateNewRoomPosition(exit, fromRoom, candidate);
+                    candidate.Bounds = new Rectangle(
+                        candidatePos.X,
+                        candidatePos.Y,
+                        candidate.Bounds.Width,
+                        candidate.Bounds.Height
+                    );
+                    adjustedRoom = HasCollision(candidate)
+                        ? TryAdjustRoomPosition(candidate, exit)
+                        : candidate;
+
+                    if (adjustedRoom != null && !HasCollision(adjustedRoom))
+                        break;
+                    adjustedRoom = null;
+                }
+
+                if (adjustedRoom == null)
+                {
+                    // Truly can't place a room — block the exit
+                    exit.IsBlocked = true;
+                    _dungeon.Messages.Add(
+                        $"A passage is sealed — no room could be placed beyond it (exit {exit.Direction}).");
+                    return null;
+                }
             }
             
             newRoom = adjustedRoom;
@@ -137,27 +164,30 @@ public class DungeonBuilder
 
     private Room? TryAdjustRoomPosition(Room room, Exit exit)
     {
-        // Try small adjustments (±1 or ±2 squares)
+        // Only slide perpendicular to the exit direction to avoid creating gaps
+        // East/West exits: only Y offsets; North/South exits: only X offsets
         int[] offsets = { -2, -1, 1, 2 };
-        
-        foreach (int xOffset in offsets)
+
+        bool isHorizontal = exit.Direction == Direction.East || exit.Direction == Direction.West;
+
+        foreach (int offset in offsets)
         {
-            foreach (int yOffset in offsets)
-            {
-                var adjusted = new Room(
-                    room.Id,
-                    new Rectangle(
-                        room.Bounds.X + xOffset,
-                        room.Bounds.Y + yOffset,
-                        room.Bounds.Width,
-                        room.Bounds.Height
-                    ),
-                    room.Type
-                );
-                
-                if (!HasCollision(adjusted))
-                    return adjusted;
-            }
+            int xOff = isHorizontal ? 0 : offset;
+            int yOff = isHorizontal ? offset : 0;
+
+            var adjusted = new Room(
+                room.Id,
+                new Rectangle(
+                    room.Bounds.X + xOff,
+                    room.Bounds.Y + yOff,
+                    room.Bounds.Width,
+                    room.Bounds.Height
+                ),
+                room.Type
+            );
+            
+            if (!HasCollision(adjusted))
+                return adjusted;
         }
         
         return null;

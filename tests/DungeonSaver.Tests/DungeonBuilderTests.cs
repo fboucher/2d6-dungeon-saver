@@ -139,6 +139,58 @@ public class DungeonBuilderTests
     }
 
     [Fact]
+    public void GenerateRoomAtExit_East_AdjustedRoom_XUnchanged()
+    {
+        // Arrange — seed=42 produces a 7×3 corridor; initial Y=11 for exit at Y=12
+        var dungeon = new Dungeon();
+        var builder = new DungeonBuilder(dungeon, seed: 42);
+
+        var parentRoom = new Room(1, new Rectangle(10, 10, 8, 6), RoomType.Normal);
+        var exitPos = new Point(parentRoom.Bounds.Right, 12); // (17, 12)
+        var exit = new Exit(exitPos, Direction.East);
+        parentRoom.Exits.Add(exit);
+        dungeon.Rooms.Add(parentRoom);
+
+        // Blocker placed at the exact initial position the room generator would choose.
+        // Forces TryAdjustRoomPosition to slide only in Y, proving X stays at exitPos.X.
+        var blocker = new Room(99, new Rectangle(17, 11, 7, 3), RoomType.Normal);
+        dungeon.Rooms.Add(blocker);
+
+        // Act
+        var newRoom = builder.GenerateRoomAtExit(exit, parentRoom);
+
+        // Assert — X must equal exit.Position.X regardless of which Y offset was used
+        Assert.NotNull(newRoom);
+        Assert.Equal(exitPos.X, newRoom.Bounds.X);
+    }
+
+    [Fact]
+    public void GenerateRoomAtExit_East_AllPositionsBlocked_ExitIsBlocked()
+    {
+        // Arrange — a wall spanning the full dungeon height at the exit's X column
+        // blocks every possible East-exit room placement (all Y offsets + all retries)
+        var dungeon = new Dungeon();
+        var builder = new DungeonBuilder(dungeon, seed: 42);
+
+        var parentRoom = new Room(1, new Rectangle(10, 10, 8, 6), RoomType.Normal);
+        var exitPos = new Point(parentRoom.Bounds.Right, 12); // (17, 12)
+        var exit = new Exit(exitPos, Direction.East);
+        parentRoom.Exits.Add(exit);
+        dungeon.Rooms.Add(parentRoom);
+
+        // Wall at X=17 covers every Y — any East room (Left==17) will collide
+        var wall = new Room(99, new Rectangle(17, 0, 5, 100), RoomType.Normal);
+        dungeon.Rooms.Add(wall);
+
+        // Act
+        var result = builder.GenerateRoomAtExit(exit, parentRoom);
+
+        // Assert
+        Assert.Null(result);
+        Assert.True(exit.IsBlocked);
+    }
+
+    [Fact]
     public void GenerateRoomAtExit_MultipleRooms_NoCollisions()
     {
         // Arrange

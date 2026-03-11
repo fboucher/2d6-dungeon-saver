@@ -10,6 +10,7 @@ public class Dungeon
     public List<Room> Rooms { get; set; }
     public Rectangle Boundary { get; set; }
     public int TargetRoomCount { get; set; }
+    public List<string> Messages { get; } = new();
     
     public Dungeon(int targetRoomCount = 20)
     {

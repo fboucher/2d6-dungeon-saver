@@ -25,6 +25,7 @@ public class Exit
     public ExitType Type { get; set; }
     public Room? ConnectedRoom { get; set; }
     public bool IsExplored { get; set; }
+    public bool IsBlocked { get; set; } = false;
 
     public Exit(Utils.Point position, Direction direction, ExitType type = ExitType.Archway)
     {

@@ -73,8 +73,8 @@ public class Pathfinder
             }
         }
 
-        // No path found, return direct line as fallback
-        return new List<Point> { start, goal };
+        // No path found — return empty list; caller handles gracefully
+        return new List<Point>();
     }
 
     private PathNode GetLowestFCost(List<PathNode> nodes)
