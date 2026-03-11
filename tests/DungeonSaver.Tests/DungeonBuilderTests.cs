@@ -26,9 +26,9 @@ public class DungeonBuilderTests
         // Assert
         Assert.NotNull(newRoom);
         // New room's left wall should touch parent's right wall (share the wall)
-        Assert.Equal(parentRoom.Bounds.Right + 1, newRoom.Bounds.Left);
+        Assert.Equal(parentRoom.Bounds.Right, newRoom.Bounds.Left);  // Shared wall — same column
         // Verify no gap and no double wall
-        Assert.Equal(exitPos.X + 1, newRoom.Bounds.Left);
+        Assert.Equal(exitPos.X, newRoom.Bounds.Left);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class DungeonBuilderTests
         // Assert
         Assert.NotNull(newRoom);
         // New room's right wall should touch parent's left wall (share the wall)
-        Assert.Equal(parentRoom.Bounds.Left - 1, newRoom.Bounds.Right);
+        Assert.Equal(parentRoom.Bounds.Left, newRoom.Bounds.Right);  // Shared wall — same column
         // Verify exit position is the shared wall
         Assert.Equal(exitPos.X, parentRoom.Bounds.Left);
     }
@@ -74,9 +74,9 @@ public class DungeonBuilderTests
         // Assert
         Assert.NotNull(newRoom);
         // New room's top wall should touch parent's bottom wall (share the wall)
-        Assert.Equal(parentRoom.Bounds.Bottom + 1, newRoom.Bounds.Top);
+        Assert.Equal(parentRoom.Bounds.Bottom, newRoom.Bounds.Top);  // Shared wall — same row
         // Verify no gap
-        Assert.Equal(exitPos.Y + 1, newRoom.Bounds.Top);
+        Assert.Equal(exitPos.Y, newRoom.Bounds.Top);
     }
 
     [Fact]
@@ -98,7 +98,7 @@ public class DungeonBuilderTests
         // Assert
         Assert.NotNull(newRoom);
         // New room's bottom wall should touch parent's top wall (share the wall)
-        Assert.Equal(parentRoom.Bounds.Top - 1, newRoom.Bounds.Bottom);
+        Assert.Equal(parentRoom.Bounds.Top, newRoom.Bounds.Bottom);  // Shared wall — same row
         // Verify exit position is at the shared wall
         Assert.Equal(exitPos.Y, parentRoom.Bounds.Top);
     }
@@ -125,13 +125,13 @@ public class DungeonBuilderTests
         // The exit position should be the shared wall position
         // Room1's right wall is at X = room1.Bounds.Right
         // Room2's left wall is at X = room2.Bounds.Left
-        // They should be adjacent: room2.Left = room1.Right + 1
-        Assert.Equal(room1.Bounds.Right + 1, room2.Bounds.Left);
+        // They should be adjacent: room2.Left = room1.Right (shared wall)
+        Assert.Equal(room1.Bounds.Right, room2.Bounds.Left);  // Shared wall
         
         // The exit is on the wall at room1.Bounds.Right
         // This means there's only ONE wall column at that X coordinate, not two
         Assert.Equal(room1.Bounds.Right, exitPos.X);
-        Assert.Equal(exitPos.X + 1, room2.Bounds.Left);
+        Assert.Equal(exitPos.X, room2.Bounds.Left);
         
         // Verify rooms don't overlap (they should be touching but not intersecting)
         Assert.False(room1.Intersects(room2), 
