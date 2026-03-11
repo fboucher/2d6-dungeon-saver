@@ -82,7 +82,18 @@ public class ExplorerAI
         if (room != null && room != _explorer.CurrentRoom)
         {
             // Entering a new room
+            var prevRoom = _explorer.CurrentRoom;
             _explorer.CurrentRoom = room;
+            
+            // Log room transition
+            _explorer.AddTrace(new MovementEvent(
+                DateTime.Now,
+                _explorer.Position,
+                _explorer.Position,
+                "RoomSwitch",
+                room.Id,
+                $"From:{prevRoom?.Id} To:{room.Id}"
+            ));
             
             // Mark room as explored
             if (!room.IsExplored)
@@ -197,6 +208,30 @@ public class ExplorerAI
             targetRoom
         );
 
+        // Log path planning
+        _explorer.AddTrace(new MovementEvent(
+            DateTime.Now,
+            _explorer.Position,
+            target,
+            "PathPlanned",
+            _explorer.CurrentRoom.Id,
+            $"ExitDir:{exit.Direction} Steps:{_explorer.CurrentPath.Count}"
+        ));
+
+        // Check if this is a fallback path (pathfinder returned direct line)
+        if (_explorer.CurrentPath.Count == 2 && 
+            _explorer.CurrentPath[0] == _explorer.Position)
+        {
+            _explorer.AddTrace(new MovementEvent(
+                DateTime.Now,
+                _explorer.Position,
+                target,
+                "PathFallback",
+                _explorer.CurrentRoom.Id,
+                $"FallbackDirect ExitDir:{exit.Direction}"
+            ));
+        }
+
         // Remove current position from path
         if (_explorer.CurrentPath.Count > 0 && _explorer.CurrentPath[0] == _explorer.Position)
         {
@@ -248,11 +283,22 @@ public class ExplorerAI
         if (_explorer.CurrentPath.Count == 0)
             return;
 
+        Point prevPos = _explorer.Position;
         Point nextPos = _explorer.CurrentPath[0];
         _explorer.CurrentPath.RemoveAt(0);
         
         _explorer.Position = nextPos;
         _explorer.LastMoveTime = DateTime.Now;
+
+        // Log movement
+        _explorer.AddTrace(new MovementEvent(
+            DateTime.Now,
+            prevPos,
+            nextPos,
+            "Move",
+            _explorer.CurrentRoom?.Id,
+            null
+        ));
 
         // Check if we crossed an exit
         CheckExitCrossing(nextPos);
@@ -269,6 +315,16 @@ public class ExplorerAI
             if (exit.Position == position && exit.ConnectedRoom != null)
             {
                 exit.IsExplored = true;
+                
+                // Log exit crossing
+                _explorer.AddTrace(new MovementEvent(
+                    DateTime.Now,
+                    position,
+                    position,
+                    "ExitCrossed",
+                    _explorer.CurrentRoom.Id,
+                    $"Dir:{exit.Direction} ConnectedRoom:{exit.ConnectedRoom.Id}"
+                ));
                 
                 // Make the connected room visible
                 if (!exit.ConnectedRoom.IsVisible)

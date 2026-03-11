@@ -23,12 +23,12 @@ public class MapExporter
     /// <summary>
     /// Export the dungeon to a text file
     /// </summary>
-    public void ExportMap(Dungeon dungeon)
+    public void ExportMap(Dungeon dungeon, Explorer explorer)
     {
         string filename = GenerateFilename();
         string filepath = Path.Combine(MAP_FOLDER, filename);
 
-        var content = GenerateMapContent(dungeon);
+        var content = GenerateMapContent(dungeon, explorer);
         
         File.WriteAllText(filepath, content);
         Console.WriteLine($"Map exported to: {filepath}");
@@ -39,7 +39,7 @@ public class MapExporter
         return DateTime.Now.ToString("yyyy-MM-dd_HHmm") + ".txt";
     }
 
-    private string GenerateMapContent(Dungeon dungeon)
+    private string GenerateMapContent(Dungeon dungeon, Explorer explorer)
     {
         var sb = new StringBuilder();
 
@@ -97,6 +97,9 @@ public class MapExporter
         sb.AppendLine("  ? = Unexplored Exit");
         sb.AppendLine("═══════════════════════════════════════════════════════");
 
+        // Add movement trace
+        AppendMovementTrace(sb, explorer);
+
         return sb.ToString();
     }
 
@@ -132,5 +135,128 @@ public class MapExporter
         bool onBottom = pos.Y == bounds.Bottom;
 
         return onLeft || onRight || onTop || onBottom;
+    }
+
+    private void AppendMovementTrace(StringBuilder sb, Explorer explorer)
+    {
+        sb.AppendLine();
+        sb.AppendLine("═══════════════════════════════════════════════════════");
+        sb.AppendLine("                   MOVEMENT TRACE                      ");
+        sb.AppendLine("═══════════════════════════════════════════════════════");
+        
+        var trace = explorer.MovementTrace;
+        
+        // Cap at last 500 events for export
+        var eventsToShow = trace.Count > 500 ? trace.Skip(trace.Count - 500).ToList() : trace.ToList();
+        
+        sb.AppendLine($"Total events: {eventsToShow.Count}{(trace.Count > 500 ? " (showing last 500)" : "")}");
+        sb.AppendLine();
+
+        if (eventsToShow.Count == 0)
+        {
+            sb.AppendLine("No movement events recorded.");
+            return;
+        }
+
+        // Group consecutive Move events in the same room
+        var grouped = new List<(string line, int count)>();
+        MovementEvent? lastMove = null;
+        int moveCount = 0;
+        Point? moveStart = null;
+
+        foreach (var evt in eventsToShow)
+        {
+            if (evt.Action == "Move" && lastMove != null && 
+                lastMove.Action == "Move" && lastMove.RoomId == evt.RoomId)
+            {
+                // Same room, consecutive moves - group them
+                moveCount++;
+            }
+            else
+            {
+                // Flush previous group
+                if (lastMove != null && lastMove.Action == "Move" && moveCount > 1)
+                {
+                    string line = FormatMovementEvent(lastMove, moveStart, moveCount);
+                    grouped.Add((line, moveCount));
+                }
+                else if (lastMove != null)
+                {
+                    string line = FormatMovementEvent(lastMove, null, 1);
+                    grouped.Add((line, 1));
+                }
+
+                // Start new group
+                if (evt.Action == "Move")
+                {
+                    moveStart = evt.From;
+                    moveCount = 1;
+                }
+                else
+                {
+                    moveCount = 0;
+                    moveStart = null;
+                }
+
+                lastMove = evt;
+            }
+        }
+
+        // Flush final group
+        if (lastMove != null)
+        {
+            if (lastMove.Action == "Move" && moveCount > 1)
+            {
+                string line = FormatMovementEvent(lastMove, moveStart, moveCount);
+                grouped.Add((line, moveCount));
+            }
+            else
+            {
+                string line = FormatMovementEvent(lastMove, null, 1);
+                grouped.Add((line, 1));
+            }
+        }
+
+        // Output all lines
+        foreach (var (line, _) in grouped)
+        {
+            sb.AppendLine(line);
+        }
+
+        sb.AppendLine("═══════════════════════════════════════════════════════");
+    }
+
+    private string FormatMovementEvent(MovementEvent evt, Point? groupStart, int groupCount)
+    {
+        string time = evt.Timestamp.ToString("HH:mm:ss.fff");
+        string action = evt.Action.PadRight(12);
+        string roomInfo = evt.RoomId.HasValue ? $"Room:{evt.RoomId,-3} " : "Room:?   ";
+
+        if (evt.Action == "Move" && groupCount > 1 && groupStart.HasValue)
+        {
+            // Grouped moves
+            string positions = $"({groupStart.Value.X},{groupStart.Value.Y})→({evt.To.X},{evt.To.Y})";
+            return $"{time} [Move x{groupCount,-5}] {roomInfo}{positions}";
+        }
+        else if (evt.Action == "Move")
+        {
+            // Single move
+            string positions = $"({evt.From.X},{evt.From.Y})→({evt.To.X},{evt.To.Y})";
+            return $"{time} [{action}] {roomInfo}{positions}";
+        }
+        else if (evt.Action == "RoomSwitch" || evt.Action == "ExitCrossed")
+        {
+            // Position doesn't change for these
+            string position = $"({evt.From.X},{evt.From.Y})";
+            string detail = evt.Detail ?? "";
+            return $"{time} [{action}] {roomInfo}{position,-15} {detail}";
+        }
+        else
+        {
+            // PathPlanned, PathFallback
+            string positions = $"→({evt.To.X},{evt.To.Y})";
+            string detail = evt.Detail ?? "";
+            return $"{time} [{action}] {roomInfo}{positions,-20} {detail}";
+        }
     }
 }

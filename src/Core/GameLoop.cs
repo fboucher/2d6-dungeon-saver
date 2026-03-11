@@ -128,7 +128,7 @@ public class GameLoop
         try
         {
             var exporter = new MapExporter();
-            exporter.ExportMap(_dungeon);
+            exporter.ExportMap(_dungeon, _explorer);
         }
         catch (Exception ex)
         {
