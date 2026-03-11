@@ -88,3 +88,17 @@
 
 **Key Insight:** Diagnostic traces are essential for debugging complex state machines. The trace captures the complete movement history, making it easy to identify when and why unexpected position changes occur.
 
+### 2025-03 — Fixed explorer backtracking via BFS
+
+**Problem:** When the explorer exhausted all unexplored exits in the current room, it would stop exploring and wander randomly forever. It never backtracked through already-explored doors (`+`) to find other rooms in the dungeon that still had unexplored exits (`?`).
+
+**Root Cause:** `FindExitToRoomWithUnexploredExits` in `src/Core/ExplorerAI.cs` only checked rooms ONE hop away (directly connected to current room). If those rooms were also fully explored, it returned null and the explorer entered wandering mode — never searching deeper into the dungeon graph.
+
+**Fixes:**
+1. **src/Core/ExplorerAI.cs** — Replaced `FindExitToRoomWithUnexploredExits()` with `FindPathToNearestUnexploredExit()` that uses BFS to traverse the entire connected room graph. Finds the nearest room (by hop count) with unexplored exits and returns the first exit from the current room that starts the path toward it.
+2. **src/Core/ExplorerAI.cs** — Updated `DecideNextDestination` to use the new BFS method as priority 2, between local unexplored exits (priority 1) and wandering (priority 3).
+3. **src/Core/ExplorerAI.cs** — Fixed dead-end handling in `FindUnexploredExit`: when `GenerateRoomAtExit` returns null (couldn't place a room), mark the exit as explored so BFS doesn't revisit it forever.
+4. **src/Core/ExplorerAI.cs** — Added "Backtrack" movement trace event when BFS finds a path, making backtracking visible in movement logs.
+
+**Key Insight:** Exploration requires graph traversal, not just local search. BFS naturally finds the shortest path to unexplored areas. Marking dead-end exits as explored prevents infinite retry loops.
+

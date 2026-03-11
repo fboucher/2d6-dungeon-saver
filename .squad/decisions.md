@@ -202,6 +202,87 @@ public record MovementEvent(
 
 **Related decision:** Root Cause: Explorer Teleportation (Jareth, 2026-03-11)
 
+### BFS Backtracking for Explorer Navigation
+
+**Date:** 2025-03  
+**Decided by:** Sarah (C# Developer)  
+**Status:** Implemented
+
+#### Context
+
+The explorer AI had three priorities when deciding where to move next:
+1. Unexplored exits in the current room
+2. Explored exits leading to directly connected rooms with unexplored exits (single-hop check)
+3. Random wandering
+
+When the explorer reached a room where all local and adjacent rooms were fully explored, it would enter wandering mode and never find the remaining unexplored areas of the dungeon.
+
+#### Problem
+
+`FindExitToRoomWithUnexploredExits()` only checked rooms ONE hop away from the current room. In a branching dungeon, this meant:
+- Explorer enters Room A → explores all exits
+- Explorer backtracks to Room B → explores all its exits
+- Explorer backtracks to Room C (entrance) → all adjacent rooms (A, B) are fully explored
+- Method returns null → explorer wanders forever
+- Rooms D, E, F deeper in the dungeon (accessible via A or B) are never discovered
+
+The explorer had no ability to backtrack MORE than one hop to find unexplored areas.
+
+#### Decision
+
+Replace single-hop adjacency check with **breadth-first search (BFS)** through the entire connected room graph.
+
+##### Algorithm
+
+`FindPathToNearestUnexploredExit()`:
+1. Start from current room
+2. Enqueue all explored exits leading to connected rooms
+3. For each room visited via BFS:
+   - Check if it has unexplored exits (already connected OR can generate new rooms)
+   - If yes: return the FIRST exit from the current room that starts the path toward it
+   - If no: enqueue its explored exits and continue searching
+4. If BFS exhausts all reachable rooms: return null (dungeon fully explored)
+
+##### Key Properties
+
+- **Nearest room first:** BFS guarantees shortest path (fewest hops) to next unexplored area
+- **Backtrack via explored doors:** Only traverses exits marked `IsExplored = true` with `ConnectedRoom != null`
+- **No teleportation:** Returns the exit in the CURRENT room to take as first step
+- **Handles ungenerated rooms:** Checks for exits where `ConnectedRoom == null` but `Rooms.Count < TargetRoomCount` (room generation still possible)
+- **Avoids dead ends:** Dead-end exits (where `GenerateRoomAtExit` returned null) are marked explored, so BFS skips them
+
+#### Implementation
+
+**Changes:**
+1. **src/Core/ExplorerAI.cs** — Added `FindPathToNearestUnexploredExit()` method (BFS implementation)
+2. **src/Core/ExplorerAI.cs** — Updated `DecideNextDestination()` to call new BFS method as priority 2
+3. **src/Core/ExplorerAI.cs** — Removed `FindExitToRoomWithUnexploredExits()` (replaced by BFS)
+4. **src/Core/ExplorerAI.cs** — Fixed `FindUnexploredExit()` to mark dead-end exits as explored
+5. **src/Core/ExplorerAI.cs** — Added "Backtrack" trace event when BFS finds a path
+
+#### Consequences
+
+**Positive:**
+- Explorer now fully explores the entire connected dungeon graph
+- No more premature wandering when unexplored areas remain
+- BFS finds shortest path to next unexplored area (efficient navigation)
+- Dead-end exits handled correctly (marked explored, not retried forever)
+- Backtracking behavior visible in movement trace logs
+
+**Negative:**
+- Slightly more complex logic (BFS vs simple adjacency check)
+- Small performance overhead (negligible for typical dungeon sizes)
+
+**Edge Cases Handled:**
+1. **Ungenerated exits:** BFS checks `ConnectedRoom == null` with `TargetRoomCount` limit
+2. **Dead ends:** Exits that couldn't place a room are marked explored
+3. **Fully explored dungeon:** BFS returns null → wandering is correct behavior
+
+#### Related Files
+
+- `src/Core/ExplorerAI.cs` — exploration logic and BFS implementation
+- `src/Models/Explorer.cs` — movement trace ("Backtrack" action type)
+
 ## Governance
 
 - All meaningful changes require team consensus
