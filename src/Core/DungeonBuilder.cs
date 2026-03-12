@@ -69,9 +69,9 @@ public class DungeonBuilder
             
             if (adjustedRoom == null || HasCollision(adjustedRoom))
             {
-                // Retry up to 3 times with a freshly generated room shape
+                // Retry up to 10 times with a freshly generated room shape
                 adjustedRoom = null;
-                for (int attempt = 0; attempt < 3; attempt++)
+                for (int attempt = 0; attempt < 10; attempt++)
                 {
                     Room candidate = _roomGenerator.GenerateRoom(new Point(0, 0));
                     Point candidatePos = CalculateNewRoomPosition(exit, fromRoom, candidate);

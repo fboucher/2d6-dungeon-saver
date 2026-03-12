@@ -4,8 +4,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        bool showRoomIds = args.Contains("--room-ids");
-        var game = new GameLoop(showRoomIds: showRoomIds);
+        var game = new GameLoop();
         game.Run();
     }
 }

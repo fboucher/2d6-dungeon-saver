@@ -10,11 +10,9 @@ namespace DungeonSaver.Core;
 public class MapExporter
 {
     private const string MAP_FOLDER = "maps";
-    private readonly bool _showRoomIds;
 
-    public MapExporter(bool showRoomIds = false)
+    public MapExporter()
     {
-        _showRoomIds = showRoomIds;
         // Ensure maps folder exists
         if (!Directory.Exists(MAP_FOLDER))
         {
@@ -133,8 +131,7 @@ public class MapExporter
         if (IsWall(room, pos))
             return '#';
 
-        // Floor — optionally overlay room ID at interior centre
-        if (_showRoomIds)
+        // Floor — overlay room ID at interior centre
         {
             string idStr = room.Id.ToString();
             int centerX = room.Bounds.X + room.Bounds.Width / 2;

@@ -20,11 +20,9 @@ public class GameLoop
     private const int FRAME_TIME_MS = 1000 / TARGET_FPS;
     
     private bool _running;
-    private readonly bool _showRoomIds;
 
-    public GameLoop(bool showRoomIds = false)
+    public GameLoop()
     {
-        _showRoomIds = showRoomIds;
         _dungeon = new Dungeon(targetRoomCount: 20);
         _builder = new DungeonBuilder(_dungeon);
         
@@ -129,7 +127,7 @@ public class GameLoop
         // Export map
         try
         {
-            var exporter = new MapExporter(showRoomIds: _showRoomIds);
+            var exporter = new MapExporter();
             exporter.ExportMap(_dungeon, _explorer);
         }
         catch (Exception ex)

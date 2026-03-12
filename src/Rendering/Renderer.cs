@@ -21,6 +21,7 @@ public class Renderer
     private const char EXPLORER_CHAR = '@';
     private const char EXIT_EXPLORED = '+';
     private const char EXIT_UNEXPLORED = '?';
+    private const char EXIT_SEALED = 'X';
     private const char FOG = ' ';  // Empty space for fog
 
     public Renderer()
@@ -156,7 +157,12 @@ public class Renderer
 
     private void RenderExit(StringBuilder buffer, Exit exit)
     {
-        if (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true)
+        if (exit.IsBlocked)
+        {
+            buffer.Append(_theme.Wall);
+            buffer.Append(EXIT_SEALED);
+        }
+        else if (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true)
         {
             buffer.Append(_theme.ExploredExit);
             buffer.Append(EXIT_EXPLORED);
