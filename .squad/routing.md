@@ -13,6 +13,7 @@ How to decide who handles what.
 | Terminal rendering, wall drawing | Hoggle | Renderer.cs, ColorTheme.cs, visual correctness |
 | Adjoining wall visual bugs | Hoggle + Sarah | Data (Sarah) + rendering (Hoggle) — fan-out both |
 | Test writing, edge cases, QA | Sir Didymus | New tests, regression coverage, validating fixes |
+| Room placement, exit geometry, algorithm review | Ludo | "Why is this door sealed?", placement decisions, geometric soundness |
 | Session logging | Scribe | Automatic — never needs routing |
 | Work queue, backlog monitoring | Ralph | "Ralph, go", "what's on the board?" |
 

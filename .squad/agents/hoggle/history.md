@@ -77,5 +77,41 @@ The exit (`+`) appears at column 10, which is both the parent room's right edge 
 - `src/Core/DungeonBuilder.cs` — `CalculateNewRoomPosition` (implements shared-wall placement)
 - `src/Rendering/MapExporter.cs` — `GetCharAt` (renders symbols correctly)
 
+## Work Log
+
+### 2025-03-12: Enhanced Movement Trace Diagnostic Detail
+
+**Task:** Add richer diagnostic information to the movement trace for room placement debugging.
+
+**Changes Made:**
+
+1. **DungeonBuilder.cs - Enhanced RetryAttempt logging:**
+   - Added attempt number in format `[N/20]`
+   - Added room bounds in format `bounds(x,y,w,h)`
+   - Added specific failure reasons: "ok", "collision", "corner", "off-boundary"
+   - Created `GetReachabilityFailureReason()` method to distinguish between corner placement vs off-boundary issues
+   - Track last attempted room and failure reason for SealDoor logging
+
+2. **DungeonBuilder.cs - Enhanced SealDoor logging:**
+   - Added retry count "20 retries failed"
+   - Added last attempted room bounds and failure reason
+   - Format: `Dir:{direction} | 20 retries failed | last: bounds(x,y,w,h) {reason}`
+
+3. **DungeonBuilder.cs - Enhanced RoomGenerated logging:**
+   - Added room bounds to show final placed room geometry
+   - Format includes dice log, bounds, and exit dice log
+
+4. **MapExporter.cs - Updated trace formatting:**
+   - Adjusted RetryAttempt formatting for better alignment with new detail
+   - Fixed action variable scoping (moved into conditional blocks)
+
+**Test Results:** All 29 tests pass ✅
+
+**Impact:** Frank can now understand WHY placement decisions are made by seeing:
+- Detailed retry attempts with bounds and failure reasons
+- Retry counts and last attempted bounds for sealed doors
+- Room bounds for all generated rooms
+- Specific failure reasons (corner, collision, off-boundary) instead of generic "blocked"
+
 ## Learnings
 

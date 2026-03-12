@@ -117,3 +117,42 @@
 
 **Key Insight:** When calculating which walls are available for exit placement, the entrance direction passed to `GenerateExits` is already the actual entrance wall — no need to flip it. The confusion came from the fact that `DungeonBuilder.GenerateRoomAtExit` already calls `GetOppositeDirection` to compute the entrance direction before passing it to `GenerateExits`.
 
+### 2026-03-12 — Fixed fast-path sealing bug
+
+**Problem:** When a room placement had no collision but `IsExitReachableInRoom` returned false (e.g., exit landed at room corner after `EnsureSeparation` shift), the fast path sealed the door immediately with ZERO retries. Meanwhile, the collision path had a 20-attempt retry loop. This caused many doors to be sealed prematurely even when different room shapes could have fit.
+
+**Real Examples:**
+- Room 4 South exit (59,64) — sealed with "exit at room corner"
+- Room 14 West exit (44,45) — sealed with "exit at room corner"
+- Room 14 North exit (46,43) — sealed with "exit at room corner"
+- Room 19 East exit (35,40) — sealed with "exit at room corner"
+
+**Root Cause:** The fast path (no collision on initial placement) executed:
+```
+EnsureSeparation → no collision → ClampToBoundary → IsExitReachableInRoom → FALSE → SEAL IMMEDIATELY ❌
+```
+
+The slow path (collision on initial placement) correctly executed:
+```
+TryAdjustRoomPosition → IsExitReachableInRoom → if false → retry loop (20 attempts) ✓
+```
+
+**Fixes:**
+1. **src/Core/DungeonBuilder.cs** — Refactored `GenerateRoomAtExit` so both collision AND reachability failure trigger the same retry loop. Lines 71-171 now:
+   - Check initial room for collision OR reachability failure
+   - If either fails, enter unified retry loop (20 attempts)
+   - Each retry generates a fresh room shape and tests both collision AND reachability
+   - Only after all 20 attempts fail does it seal the door
+2. **src/Core/DungeonBuilder.cs** — Added `GetReachabilityFailureReason` helper method that returns:
+   - "corner" if exit is at a room corner (all 4 adjacent tiles are walls or outside)
+   - "off-boundary" if exit position is outside room bounds
+   - "collision" if room overlaps with existing rooms
+3. **src/Core/DungeonBuilder.cs** — Enhanced retry logging to include:
+   - Detailed failure reason for each attempt (not just "blocked")
+   - Room bounds in retry log: `"[2][3] 4x5 Normal - corner (bounds:55,64,6,4)"`
+4. **src/Core/DungeonBuilder.cs** — Changed SealDoor message from "exit at room corner" to "no valid placement found" since we now try 20 different shapes before sealing.
+
+**Key Insight:** Both collision and reachability are placement constraints that should trigger the same retry logic. Treating them differently created an asymmetry where some sealings had zero retries while others had 20. The unified retry loop ensures every exit gets a fair chance with multiple room shapes before being sealed.
+
+**Test Results:** All 29 tests pass, including `GenerateRoomAtExit_East_AllPositionsBlocked_ExitIsBlocked` which validates sealing when truly blocked.
+

@@ -243,7 +243,6 @@ public class MapExporter
 
     private string FormatMovementEvent(MovementEvent evt, Point? groupStart, int groupCount)
     {
-        string action = evt.Action.PadRight(12);
         string roomInfo = evt.RoomId.HasValue ? $"Room:{evt.RoomId,-3} " : "Room:?   ";
 
         if (evt.Action == "Move" && groupCount > 1 && groupStart.HasValue)
@@ -255,24 +254,28 @@ public class MapExporter
         else if (evt.Action == "Move")
         {
             // Single move
+            string action = evt.Action.PadRight(12);
             string positions = $"({evt.From.X},{evt.From.Y})→({evt.To.X},{evt.To.Y})";
             return $"{roomInfo} [{action}] {positions}";
         }
         else if (evt.Action == "RoomSwitch" || evt.Action == "ExitCrossed")
         {
             // Position doesn't change for these
+            string action = evt.Action.PadRight(12);
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
             return $"{roomInfo} [{action}] {position,-15} {detail}";
         }
         else if (evt.Action == "RoomGenerated")
         {
+            string action = evt.Action.PadRight(12);
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
             return $"{roomInfo} [{action}] {position,-15} {detail}";
         }
         else if (evt.Action == "SealDoor")
         {
+            string action = evt.Action.PadRight(12);
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
             return $"{roomInfo} [{action}] {position,-15} {detail}";
@@ -281,11 +284,13 @@ public class MapExporter
         {
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
-            return $"{roomInfo} [{action}] {position,-15} {detail}";
+            // Format: Room:6    [Retry  1/20] (52,59)         [4][1] Corridor bounds(51,58,6,3) ok
+            return $"{roomInfo} [Retry       ] {position,-15} {detail}";
         }
         else
         {
-            // PathPlanned, PathFallback
+            // PathPlanned, PathFallback, Backtrack
+            string action = evt.Action.PadRight(12);
             string positions = $"→({evt.To.X},{evt.To.Y})";
             string detail = evt.Detail ?? "";
             return $"{roomInfo} [{action}] {positions,-20} {detail}";

@@ -17,6 +17,7 @@
 | Hoggle | Rendering Developer | [charter](agents/hoggle/charter.md) | 🟢 Active |
 | Sir Didymus | Tester | [charter](agents/sir-didymus/charter.md) | 🟢 Active |
 | Scribe | Session Logger | [charter](agents/scribe/charter.md) | 🟢 Active |
+| Ludo | Design Architect | [charter](agents/ludo/charter.md) | 🟢 Active |
 | Ralph | Work Monitor | — | 🔄 Monitor |
 
 ## Project Context
