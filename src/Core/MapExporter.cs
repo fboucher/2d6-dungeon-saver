@@ -284,8 +284,12 @@ public class MapExporter
         {
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
-            // Format: Room:6    [Retry  1/20] (52,59)         [4][1] Corridor bounds(51,58,6,3) ok
-            return $"{roomInfo} [Retry       ] {position,-15} {detail}";
+            // Detail format: "N/20 [dice] - reason (bounds:...)"
+            // Extract attempt number prefix (e.g. "1/20") for the bracket label
+            int spaceIdx = detail.IndexOf(' ');
+            string attemptNum = spaceIdx > 0 ? detail[..spaceIdx] : "";
+            string rest = spaceIdx > 0 ? detail[(spaceIdx + 1)..] : detail;
+            return $"{roomInfo} [Retry {attemptNum,5}] {position,-15} {rest}";
         }
         else
         {

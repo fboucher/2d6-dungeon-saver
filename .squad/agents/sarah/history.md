@@ -156,3 +156,16 @@ TryAdjustRoomPosition → IsExitReachableInRoom → if false → retry loop (20 
 
 **Test Results:** All 29 tests pass, including `GenerateRoomAtExit_East_AllPositionsBlocked_ExitIsBlocked` which validates sealing when truly blocked.
 
+
+### 2025-05 — Added dice result to RetryAttempt trace entries
+
+**Problem:** `RetryAttempt` log entries in the generation trace showed the failure reason and bounds, but the attempt number wasn't shown in `[Retry       ]`, and the initial failed attempt (before the retry loop) was never logged at all.
+
+**Fixes:**
+1. **src/Core/DungeonBuilder.cs** — Added a log entry for the initial attempt (`0/20`) right before the retry loop starts, capturing `roomDiceLog` and the reason for failure (`collision` or reachability reason).
+2. **src/Core/DungeonBuilder.cs** — Updated retry loop log entries to prefix the detail string with `{attempt+1}/20` so the attempt number travels with the log entry.
+3. **src/Core/MapExporter.cs** — Updated `RetryAttempt` case in `FormatMovementEvent` to parse the `N/M` prefix out of the detail string and display it as `[Retry  N/20]`, with dice and failure reason following.
+
+**Result:** Trace now shows: `Room:6    [Retry  1/20] (52,59)         [4][1] Corridor - corner (bounds:...)` for each attempt.
+
+**Key Insight:** The detail string is the only data channel from `GenerationLogEntry` to `MapExporter`. Embedding the attempt number as a structured prefix (`N/20`) in the detail keeps `GenerationLogEntry` record unchanged and avoids adding new fields to the record.

@@ -99,6 +99,21 @@ public class DungeonBuilder
         
         if (needsRetry)
         {
+            // Log the initial failed attempt (before the retry loop)
+            {
+                string initFailReason;
+                if (adjustedRoom != null && !HasCollision(adjustedRoom))
+                    initFailReason = GetReachabilityFailureReason(adjustedRoom, exit.Position);
+                else
+                    initFailReason = "collision";
+                _generationLog.Add(new GenerationLogEntry(
+                    "RetryAttempt",
+                    fromRoom.Id,
+                    exit.Position,
+                    $"0/20 {roomDiceLog} - {initFailReason}"
+                ));
+            }
+
             // Retry up to 20 times with a freshly generated room shape
             adjustedRoom = null;
             string lastSuccessfulRoomDiceLog = roomDiceLog;
@@ -140,7 +155,7 @@ public class DungeonBuilder
                     failureReason = "collision";
                 }
                 
-                // Log this retry attempt with detailed failure reason
+                // Log this retry attempt with attempt number, dice, and failure reason
                 string result = placementOk ? "ok" : failureReason;
                 string boundsStr = retryRoom != null 
                     ? $" (bounds:{retryRoom.Bounds.X},{retryRoom.Bounds.Y},{retryRoom.Bounds.Width},{retryRoom.Bounds.Height})"
@@ -149,7 +164,7 @@ public class DungeonBuilder
                     "RetryAttempt",
                     fromRoom.Id,
                     exit.Position,
-                    $"{candidateDiceLog} - {result}{boundsStr}"
+                    $"{attempt + 1}/20 {candidateDiceLog} - {result}{boundsStr}"
                 ));
                 
                 if (placementOk)
