@@ -109,14 +109,29 @@ public class DungeonBuilder
                         : candidate;
 
                     // Check both collision and exit reachability
+                    bool placementOk = false;
                     if (adjustedRoom != null && !HasCollision(adjustedRoom))
                     {
                         adjustedRoom = ClampToBoundary(adjustedRoom);
                         if (IsExitReachableInRoom(adjustedRoom, exit.Position))
                         {
                             lastSuccessfulRoomDiceLog = candidateDiceLog;
-                            break;
+                            placementOk = true;
                         }
+                    }
+                    
+                    // Log this retry attempt
+                    string result = placementOk ? "ok" : "blocked";
+                    _generationLog.Add(new GenerationLogEntry(
+                        "RetryAttempt",
+                        fromRoom.Id,
+                        exit.Position,
+                        $"{candidateDiceLog} - {result}"
+                    ));
+                    
+                    if (placementOk)
+                    {
+                        break;
                     }
                     adjustedRoom = null;
                 }

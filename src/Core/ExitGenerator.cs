@@ -91,8 +91,8 @@ public class ExitGenerator
         
         if (entranceDirection.HasValue)
         {
-            // Remove entrance wall
-            allWalls.Remove(GetOppositeDirection(entranceDirection.Value));
+            // Remove entrance wall directly
+            allWalls.Remove(entranceDirection.Value);
         }
         
         return allWalls;

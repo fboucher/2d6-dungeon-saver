@@ -102,3 +102,18 @@
 
 **Key Insight:** Exploration requires graph traversal, not just local search. BFS naturally finds the shortest path to unexplored areas. Marking dead-end exits as explored prevents infinite retry loops.
 
+### 2025-03 — Fixed entrance wall exclusion and retry logging
+
+**Problem 1:** Room 2 was getting duplicate East exits and sealed doors. The entrance wall was not being excluded correctly when generating exits.
+
+**Root Cause:** `GetAvailableWalls` in `src/Core/ExitGenerator.cs` was removing the OPPOSITE of the entrance direction instead of the entrance direction itself. When Room 1's West exit created Room 2 with entrance direction East, it should have excluded East from available walls but instead excluded West. This caused Room 2 to generate an exit on its entrance wall (East), creating a duplicate exit that led to failed placement and sealed doors.
+
+**Problem 2:** Retry attempts in `GenerateRoomAtExit` were not being logged to the trace, making it impossible to see what dice rolls were attempted when room placement failed.
+
+**Fixes:**
+1. **src/Core/ExitGenerator.cs** — Changed `GetAvailableWalls` line 95 to remove `entranceDirection.Value` directly instead of `GetOppositeDirection(entranceDirection.Value)`. Now correctly excludes the actual entrance wall.
+2. **src/Core/DungeonBuilder.cs** — Added `RetryAttempt` logging inside the retry loop (lines 96-122). Each retry now logs a `GenerationLogEntry` with the candidate's dice log and whether it passed (`"ok"`) or failed (`"blocked"`).
+3. **src/Core/MapExporter.cs** — Added `RetryAttempt` case in `FormatMovementEvent` to render retry attempts in the trace output with proper formatting.
+
+**Key Insight:** When calculating which walls are available for exit placement, the entrance direction passed to `GenerateExits` is already the actual entrance wall — no need to flip it. The confusion came from the fact that `DungeonBuilder.GenerateRoomAtExit` already calls `GetOppositeDirection` to compute the entrance direction before passing it to `GenerateExits`.
+

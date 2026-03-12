@@ -277,6 +277,12 @@ public class MapExporter
             string detail = evt.Detail ?? "";
             return $"{roomInfo} [{action}] {position,-15} {detail}";
         }
+        else if (evt.Action == "RetryAttempt")
+        {
+            string position = $"({evt.From.X},{evt.From.Y})";
+            string detail = evt.Detail ?? "";
+            return $"{roomInfo} [{action}] {position,-15} {detail}";
+        }
         else
         {
             // PathPlanned, PathFallback
