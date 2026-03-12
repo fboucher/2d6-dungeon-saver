@@ -77,13 +77,23 @@ public class DungeonBuilder
             // Try to adjust position slightly (axis-constrained)
             Room? adjustedRoom = TryAdjustRoomPosition(newRoom, exit);
             
-            if (adjustedRoom == null || HasCollision(adjustedRoom))
+            // Check if the adjusted room is valid (no collision and exit is reachable)
+            if (adjustedRoom != null && !HasCollision(adjustedRoom))
             {
-                // Retry up to 10 times with a freshly generated room shape
+                adjustedRoom = ClampToBoundary(adjustedRoom);
+                if (!IsExitReachableInRoom(adjustedRoom, exit.Position))
+                {
+                    adjustedRoom = null; // Not reachable, force retry loop
+                }
+            }
+            
+            if (adjustedRoom == null)
+            {
+                // Retry up to 20 times with a freshly generated room shape
                 adjustedRoom = null;
                 string lastSuccessfulRoomDiceLog = roomDiceLog;
                 
-                for (int attempt = 0; attempt < 10; attempt++)
+                for (int attempt = 0; attempt < 20; attempt++)
                 {
                     var (candidate, candidateDiceLog) = _roomGenerator.GenerateRoom(new Point(0, 0));
                     Point candidatePos = CalculateNewRoomPosition(exit, fromRoom, candidate);
@@ -98,10 +108,15 @@ public class DungeonBuilder
                         ? TryAdjustRoomPosition(candidate, exit)
                         : candidate;
 
+                    // Check both collision and exit reachability
                     if (adjustedRoom != null && !HasCollision(adjustedRoom))
                     {
-                        lastSuccessfulRoomDiceLog = candidateDiceLog;
-                        break;
+                        adjustedRoom = ClampToBoundary(adjustedRoom);
+                        if (IsExitReachableInRoom(adjustedRoom, exit.Position))
+                        {
+                            lastSuccessfulRoomDiceLog = candidateDiceLog;
+                            break;
+                        }
                     }
                     adjustedRoom = null;
                 }
@@ -132,6 +147,18 @@ public class DungeonBuilder
 
         // Ensure room stays within boundary (adjust if needed)
         newRoom = ClampToBoundary(newRoom);
+        
+        // Validate that the exit position is actually reachable from inside the new room
+        // (can happen if EnsureSeparation shifts the room so the exit lands at a corner)
+        if (!IsExitReachableInRoom(newRoom, exit.Position))
+        {
+            exit.IsBlocked = true;
+            _dungeon.Messages.Add(
+                $"A passage is sealed — room geometry prevents entry (Room {fromRoom.Id}, exit {exit.Direction}).");
+            _generationLog.Add(new GenerationLogEntry("SealDoor", fromRoom.Id, exit.Position,
+                $"Dir:{exit.Direction} sealed - exit at room corner"));
+            return null;
+        }
         
         // Generate exits for the new room, then add a back-exit so BFS can traverse back
         Direction entranceDir = GetOppositeDirection(exit.Direction);
@@ -308,5 +335,39 @@ public class DungeonBuilder
             Direction.West => Direction.East,
             _ => Direction.North
         };
+    }
+
+    /// <summary>
+    /// Returns true if the exit position has at least one reachable interior floor tile
+    /// adjacent to it within the given room. If false, the room is placed such that the
+    /// explorer can never step through this exit into the room's interior.
+    /// </summary>
+    private bool IsExitReachableInRoom(Room room, Point exitPosition)
+    {
+        var b = room.Bounds;
+        
+        // First check: is the exit actually on this room's boundary?
+        bool onBoundary = (exitPosition.X == b.Left || exitPosition.X == b.Right) && 
+                          exitPosition.Y >= b.Top && exitPosition.Y <= b.Bottom ||
+                          (exitPosition.Y == b.Top || exitPosition.Y == b.Bottom) && 
+                          exitPosition.X >= b.Left && exitPosition.X <= b.Right;
+        
+        if (!onBoundary)
+            return false; // Exit not on room boundary - room placement is invalid
+        
+        var adjacent = new[]
+        {
+            new Point(exitPosition.X + 1, exitPosition.Y),
+            new Point(exitPosition.X - 1, exitPosition.Y),
+            new Point(exitPosition.X, exitPosition.Y + 1),
+            new Point(exitPosition.X, exitPosition.Y - 1),
+        };
+
+        return adjacent.Any(p =>
+        {
+            if (!room.Contains(p)) return false;
+            bool isWall = p.X == b.Left || p.X == b.Right || p.Y == b.Top || p.Y == b.Bottom;
+            return !isWall;
+        });
     }
 }

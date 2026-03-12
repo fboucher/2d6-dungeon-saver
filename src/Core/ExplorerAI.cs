@@ -197,7 +197,7 @@ public class ExplorerAI
 
         // Seed with all explored exits from current room
         foreach (var exit in _explorer.CurrentRoom.Exits
-            .Where(e => e.IsExplored && e.ConnectedRoom != null))
+            .Where(e => e.IsExplored && e.ConnectedRoom != null && !e.IsNavigationBlocked))
         {
             queue.Enqueue((exit.ConnectedRoom!, exit));
         }
@@ -229,6 +229,7 @@ public class ExplorerAI
             // Keep searching — enqueue this room's explored exits
             foreach (var exit in current.Exits
                 .Where(e => e.IsExplored && e.ConnectedRoom != null
+                         && !e.IsNavigationBlocked
                          && !visited.Contains(e.ConnectedRoom.Id)))
             {
                 queue.Enqueue((exit.ConnectedRoom!, firstExit));
@@ -269,6 +270,10 @@ public class ExplorerAI
         if (_explorer.CurrentPath.Count == 0)
         {
             exit.IsExplored = true;
+            // If we have a connected room but can't navigate there, mark it navigation-blocked
+            // so the BFS won't keep routing us back to this same dead-end exit
+            if (exit.ConnectedRoom != null)
+                exit.IsNavigationBlocked = true;
             _explorer.AddTrace(new MovementEvent(
                 DateTime.Now,
                 _explorer.Position,

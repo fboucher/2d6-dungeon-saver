@@ -250,39 +250,39 @@ public class MapExporter
         {
             // Grouped moves
             string positions = $"({groupStart.Value.X},{groupStart.Value.Y})→({evt.To.X},{evt.To.Y})";
-            return $"[Move x{groupCount,-5}] {roomInfo}{positions}";
+            return $"{roomInfo} [Move x{groupCount,-5}] {positions}";
         }
         else if (evt.Action == "Move")
         {
             // Single move
             string positions = $"({evt.From.X},{evt.From.Y})→({evt.To.X},{evt.To.Y})";
-            return $"[{action}] {roomInfo}{positions}";
+            return $"{roomInfo} [{action}] {positions}";
         }
         else if (evt.Action == "RoomSwitch" || evt.Action == "ExitCrossed")
         {
             // Position doesn't change for these
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
-            return $"[{action}] {roomInfo}{position,-15} {detail}";
+            return $"{roomInfo} [{action}] {position,-15} {detail}";
         }
         else if (evt.Action == "RoomGenerated")
         {
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
-            return $"[{action}] {roomInfo}{position,-15} {detail}";
+            return $"{roomInfo} [{action}] {position,-15} {detail}";
         }
         else if (evt.Action == "SealDoor")
         {
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
-            return $"[{action}] {roomInfo}{position,-15} {detail}";
+            return $"{roomInfo} [{action}] {position,-15} {detail}";
         }
         else
         {
             // PathPlanned, PathFallback
             string positions = $"→({evt.To.X},{evt.To.Y})";
             string detail = evt.Detail ?? "";
-            return $"[{action}] {roomInfo}{positions,-20} {detail}";
+            return $"{roomInfo} [{action}] {positions,-20} {detail}";
         }
     }
 
