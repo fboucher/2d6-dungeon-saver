@@ -19,9 +19,10 @@ public class RoomGenerator
     /// <summary>
     /// Generate the entrance room (special rules: 6-12 squares, 3 exits)
     /// </summary>
-    public Room GenerateEntranceRoom(Point position)
+    public (Room room, string diceLog) GenerateEntranceRoom(Point position)
     {
         var (x, y) = _dice.RollD66();
+        string diceLog = $"[{x}][{y}]";
         int area = x * y;
 
         // Entrance room must be 6-12 squares (floor area)
@@ -44,28 +45,35 @@ public class RoomGenerator
         room.IsVisible = true;
         room.IsExplored = true;
         
-        return room;
+        return (room, diceLog);
     }
 
     /// <summary>
     /// Generate a normal room following 2D6 rules
     /// </summary>
-    public Room GenerateRoom(Point position)
+    public (Room room, string diceLog) GenerateRoom(Point position)
     {
         var (x, y) = _dice.RollD66();
+        string diceLog;
         
         // Check for corridor (any dimension is 1, but not double-1)
         if ((x == 1 || y == 1) && !(x == 1 && y == 1))
         {
-            return GenerateCorridor(position, x, y);
+            diceLog = $"[{x}][{y}]";
+            return (GenerateCorridor(position, x, y), diceLog);
         }
 
         // Check for doubles (except double-6)
         if (_dice.IsDouble(x, y) && !_dice.IsDouble6(x, y))
         {
             var (addX, addY) = _dice.Roll2D6();
+            diceLog = $"[{x}][{y}] doubles+[{addX}][{addY}]";
             x += addX;
             y += addY;
+        }
+        else
+        {
+            diceLog = $"[{x}][{y}]";
         }
 
         int area = x * y;
@@ -73,7 +81,7 @@ public class RoomGenerator
         
         // Dimensions are floor area, add 2 for walls (1 on each side)
         var bounds = new Rectangle(position.X, position.Y, x + 2, y + 2);
-        return new Room(_nextRoomId++, bounds, type);
+        return (new Room(_nextRoomId++, bounds, type), diceLog);
     }
 
     private Room GenerateCorridor(Point position, int x, int y)

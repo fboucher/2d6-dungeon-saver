@@ -25,5 +25,27 @@ public class Dungeon
         return Rooms.FirstOrDefault(r => r.Contains(position));
     }
     
+    /// <summary>
+    /// Search all rooms for any exit at the given position.
+    /// Prioritizes blocked exits over explored/unexplored exits.
+    /// Rooms can share wall coordinates, so multiple rooms may contain the position.
+    /// </summary>
+    public Exit? GetExitAt(Point position)
+    {
+        Exit? explored = null;
+        Exit? unexplored = null;
+        foreach (var room in Rooms)
+        {
+            var exit = room.Exits.FirstOrDefault(e => e.Position == position);
+            if (exit == null) continue;
+            if (exit.IsBlocked) return exit;  // Blocked always wins
+            if (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true)
+                explored ??= exit;
+            else
+                unexplored ??= exit;
+        }
+        return explored ?? unexplored;
+    }
+    
     public bool IsComplete => Rooms.Count >= TargetRoomCount;
 }

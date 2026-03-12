@@ -3,6 +3,8 @@ using DungeonSaver.Utils;
 
 namespace DungeonSaver.Core;
 
+public record GenerationLogEntry(string Action, int? RoomId, Point Position, string Detail);
+
 /// <summary>
 /// Builds the dungeon progressively as the explorer moves
 /// </summary>
@@ -12,6 +14,7 @@ public class DungeonBuilder
     private readonly RoomGenerator _roomGenerator;
     private readonly ExitGenerator _exitGenerator;
     private readonly Dungeon _dungeon;
+    private readonly List<GenerationLogEntry> _generationLog = new();
 
     public DungeonBuilder(Dungeon dungeon, int? seed = null)
     {
@@ -21,6 +24,13 @@ public class DungeonBuilder
         _dungeon = dungeon;
     }
 
+    public List<GenerationLogEntry> DrainGenerationLog()
+    {
+        var entries = _generationLog.ToList();
+        _generationLog.Clear();
+        return entries;
+    }
+
     /// <summary>
     /// Initialize the dungeon with an entrance room
     /// </summary>
@@ -28,10 +38,10 @@ public class DungeonBuilder
     {
         // Start entrance roughly in the center of boundary
         Point startPos = new Point(_dungeon.Boundary.Width / 2, _dungeon.Boundary.Height / 2);
-        Room entrance = _roomGenerator.GenerateEntranceRoom(startPos);
+        var (entrance, roomDiceLog) = _roomGenerator.GenerateEntranceRoom(startPos);
         
         // Generate 3 exits for entrance room
-        _exitGenerator.GenerateExits(entrance);
+        string exitDiceLog = _exitGenerator.GenerateExits(entrance);
         
         _dungeon.Rooms.Add(entrance);
         return entrance;
@@ -46,7 +56,7 @@ public class DungeonBuilder
             return exit.ConnectedRoom;
 
         // Generate the room first (at temporary position)
-        Room newRoom = _roomGenerator.GenerateRoom(new Point(0, 0));
+        var (newRoom, roomDiceLog) = _roomGenerator.GenerateRoom(new Point(0, 0));
         
         // Now position it correctly based on exit direction and new room size
         Point newRoomPosition = CalculateNewRoomPosition(exit, fromRoom, newRoom);
@@ -71,9 +81,11 @@ public class DungeonBuilder
             {
                 // Retry up to 10 times with a freshly generated room shape
                 adjustedRoom = null;
+                string lastSuccessfulRoomDiceLog = roomDiceLog;
+                
                 for (int attempt = 0; attempt < 10; attempt++)
                 {
-                    Room candidate = _roomGenerator.GenerateRoom(new Point(0, 0));
+                    var (candidate, candidateDiceLog) = _roomGenerator.GenerateRoom(new Point(0, 0));
                     Point candidatePos = CalculateNewRoomPosition(exit, fromRoom, candidate);
                     candidate.Bounds = new Rectangle(
                         candidatePos.X,
@@ -87,7 +99,10 @@ public class DungeonBuilder
                         : candidate;
 
                     if (adjustedRoom != null && !HasCollision(adjustedRoom))
+                    {
+                        lastSuccessfulRoomDiceLog = candidateDiceLog;
                         break;
+                    }
                     adjustedRoom = null;
                 }
 
@@ -97,8 +112,19 @@ public class DungeonBuilder
                     exit.IsBlocked = true;
                     _dungeon.Messages.Add(
                         $"A passage is sealed — no room could be placed beyond it (Room {fromRoom.Id}, exit {exit.Direction}).");
+                    
+                    // Add SealDoor log entry
+                    _generationLog.Add(new GenerationLogEntry(
+                        "SealDoor",
+                        fromRoom.Id,
+                        exit.Position,
+                        $"Dir:{exit.Direction} sealed"
+                    ));
+                    
                     return null;
                 }
+                
+                roomDiceLog = lastSuccessfulRoomDiceLog;
             }
             
             newRoom = adjustedRoom;
@@ -109,7 +135,7 @@ public class DungeonBuilder
         
         // Generate exits for the new room, then add a back-exit so BFS can traverse back
         Direction entranceDir = GetOppositeDirection(exit.Direction);
-        _exitGenerator.GenerateExits(newRoom, entranceDir);
+        string exitDiceLog = _exitGenerator.GenerateExits(newRoom, entranceDir);
         var backExit = new Exit(exit.Position, entranceDir) { ConnectedRoom = fromRoom };
         newRoom.Exits.Add(backExit);
         
@@ -118,6 +144,19 @@ public class DungeonBuilder
         exit.IsExplored = false; // Will be explored when entered
         
         _dungeon.Rooms.Add(newRoom);
+        
+        // Add RoomGenerated log entry
+        var center = new Point(
+            newRoom.Bounds.X + newRoom.Bounds.Width / 2,
+            newRoom.Bounds.Y + newRoom.Bounds.Height / 2
+        );
+        _generationLog.Add(new GenerationLogEntry(
+            "RoomGenerated",
+            newRoom.Id,
+            center,
+            $"{roomDiceLog} {newRoom.Bounds.Width - 2}x{newRoom.Bounds.Height - 2} {newRoom.Type} {exitDiceLog}"
+        ));
+        
         return newRoom;
     }
 

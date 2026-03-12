@@ -112,26 +112,22 @@ public class MapExporter
 
     private char GetCharAt(Point pos, Dungeon dungeon)
     {
-        Room? room = dungeon.GetRoomAt(pos);
-        
-        if (room == null)
-            return ' ';
-
-        // Check if exit (blocked exits show as X, explored as +, unexplored as ?)
-        foreach (var exit in room.Exits)
+        // Search all rooms for any exit at this position (rooms can share wall coordinates)
+        Exit? exit = dungeon.GetExitAt(pos);
+        if (exit != null)
         {
-            if (exit.Position == pos)
-            {
-                if (exit.IsBlocked) return 'X';
-                return (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true) ? '+' : '?';
-            }
+            if (exit.IsBlocked) return 'X';
+            return (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true) ? '+' : '?';
         }
 
-        // Check if wall
-        if (IsWall(room, pos))
-            return '#';
+        // No exit found — check wall/floor via room lookup
+        Room? room = dungeon.GetRoomAt(pos);
+        if (room == null) return ' ';
 
-        // Floor — overlay room ID at interior centre
+        if (IsWall(room, pos)) return '#';
+
+        // Floor — overlay room ID at interior centre (not for corridors; they're too narrow)
+        if (room.Type != RoomType.Corridor)
         {
             string idStr = room.Id.ToString();
             int centerX = room.Bounds.X + room.Bounds.Width / 2;
@@ -247,7 +243,6 @@ public class MapExporter
 
     private string FormatMovementEvent(MovementEvent evt, Point? groupStart, int groupCount)
     {
-        string time = evt.Timestamp.ToString("HH:mm:ss.fff");
         string action = evt.Action.PadRight(12);
         string roomInfo = evt.RoomId.HasValue ? $"Room:{evt.RoomId,-3} " : "Room:?   ";
 
@@ -255,27 +250,39 @@ public class MapExporter
         {
             // Grouped moves
             string positions = $"({groupStart.Value.X},{groupStart.Value.Y})→({evt.To.X},{evt.To.Y})";
-            return $"{time} [Move x{groupCount,-5}] {roomInfo}{positions}";
+            return $"[Move x{groupCount,-5}] {roomInfo}{positions}";
         }
         else if (evt.Action == "Move")
         {
             // Single move
             string positions = $"({evt.From.X},{evt.From.Y})→({evt.To.X},{evt.To.Y})";
-            return $"{time} [{action}] {roomInfo}{positions}";
+            return $"[{action}] {roomInfo}{positions}";
         }
         else if (evt.Action == "RoomSwitch" || evt.Action == "ExitCrossed")
         {
             // Position doesn't change for these
             string position = $"({evt.From.X},{evt.From.Y})";
             string detail = evt.Detail ?? "";
-            return $"{time} [{action}] {roomInfo}{position,-15} {detail}";
+            return $"[{action}] {roomInfo}{position,-15} {detail}";
+        }
+        else if (evt.Action == "RoomGenerated")
+        {
+            string position = $"({evt.From.X},{evt.From.Y})";
+            string detail = evt.Detail ?? "";
+            return $"[{action}] {roomInfo}{position,-15} {detail}";
+        }
+        else if (evt.Action == "SealDoor")
+        {
+            string position = $"({evt.From.X},{evt.From.Y})";
+            string detail = evt.Detail ?? "";
+            return $"[{action}] {roomInfo}{position,-15} {detail}";
         }
         else
         {
             // PathPlanned, PathFallback
             string positions = $"→({evt.To.X},{evt.To.Y})";
             string detail = evt.Detail ?? "";
-            return $"{time} [{action}] {roomInfo}{positions,-20} {detail}";
+            return $"[{action}] {roomInfo}{positions,-20} {detail}";
         }
     }
 

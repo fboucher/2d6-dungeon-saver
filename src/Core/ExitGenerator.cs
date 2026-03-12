@@ -19,10 +19,10 @@ public class ExitGenerator
     /// Determine number of exits based on D6 roll
     /// 1 = 0 exits, 2-3 = 1 exit, 4-5 = 2 exits, 6 = 3 exits
     /// </summary>
-    public int DetermineExitCount()
+    public (int count, string diceLog) DetermineExitCount()
     {
         int roll = _dice.D6();
-        return roll switch
+        int count = roll switch
         {
             1 => 0,
             2 or 3 => 1,
@@ -30,27 +30,40 @@ public class ExitGenerator
             6 => 3,
             _ => 1
         };
+        string meaning = count switch
+        {
+            0 => "no exits",
+            1 => "one exit",
+            2 => "two exits",
+            3 => "three exits",
+            _ => "?"
+        };
+        return (count, $"[{roll}] - {meaning}");
     }
 
     /// <summary>
     /// Generate exits for a room following the clockwise placement rules
     /// </summary>
-    public void GenerateExits(Room room, Direction? entranceDirection = null)
+    public string GenerateExits(Room room, Direction? entranceDirection = null)
     {
         int exitCount;
+        string diceLog;
         
         // Entrance room always has 3 exits
         if (room.Type == RoomType.Entrance)
         {
             exitCount = 3;
+            diceLog = "entrance - 3 exits";
         }
         else
         {
-            exitCount = DetermineExitCount();
+            var (count, log) = DetermineExitCount();
+            exitCount = count;
+            diceLog = log;
         }
 
         if (exitCount == 0)
-            return;
+            return diceLog;
 
         // Get available walls (all except entrance wall if applicable)
         var availableWalls = GetAvailableWalls(entranceDirection);
@@ -68,6 +81,8 @@ public class ExitGenerator
             var exit = new Exit(exitPos, dir, ExitType.Archway);
             room.Exits.Add(exit);
         }
+
+        return diceLog;
     }
 
     private List<Direction> GetAvailableWalls(Direction? entranceDirection)

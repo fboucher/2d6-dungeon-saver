@@ -92,6 +92,14 @@ public class Renderer
                     continue;
                 }
 
+                // Check if position is an exit (search all visible rooms — exits can share wall coords)
+                Exit? exit = GetExitAtPosition(dungeon, worldPos);
+                if (exit != null)
+                {
+                    RenderExit(buffer, exit);
+                    continue;
+                }
+
                 // Find room at this position
                 Room? room = dungeon.GetRoomAt(worldPos);
                 
@@ -103,14 +111,6 @@ public class Renderer
                         buffer.Append(_theme.FogOfWar);
                         buffer.Append(FOG);
                         buffer.Append(ColorTheme.Reset);
-                        continue;
-                    }
-
-                    // Check if position is an exit
-                    Exit? exit = GetExitAtPosition(room, worldPos);
-                    if (exit != null)
-                    {
-                        RenderExit(buffer, exit);
                         continue;
                     }
 
@@ -150,9 +150,22 @@ public class Renderer
         Console.Write(buffer.ToString());
     }
 
-    private Exit? GetExitAtPosition(Room room, Point pos)
+    private Exit? GetExitAtPosition(Dungeon dungeon, Point pos)
     {
-        return room.Exits.FirstOrDefault(e => e.Position == pos);
+        Exit? explored = null;
+        Exit? unexplored = null;
+        foreach (var room in dungeon.Rooms)
+        {
+            if (!room.IsVisible) continue;
+            var exit = room.Exits.FirstOrDefault(e => e.Position == pos);
+            if (exit == null) continue;
+            if (exit.IsBlocked) return exit;
+            if (exit.IsExplored || exit.ConnectedRoom?.IsVisible == true)
+                explored ??= exit;
+            else
+                unexplored ??= exit;
+        }
+        return explored ?? unexplored;
     }
 
     private void RenderExit(StringBuilder buffer, Exit exit)

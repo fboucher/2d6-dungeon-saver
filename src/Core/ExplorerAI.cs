@@ -149,6 +149,20 @@ public class ExplorerAI
                 if (exit.ConnectedRoom == null && _dungeon.Rooms.Count < _dungeon.TargetRoomCount)
                 {
                     _dungeonBuilder.GenerateRoomAtExit(exit, _explorer.CurrentRoom);
+                    
+                    // Drain generation log and add to trace
+                    var genLog = _dungeonBuilder.DrainGenerationLog();
+                    foreach (var entry in genLog)
+                    {
+                        _explorer.AddTrace(new MovementEvent(
+                            DateTime.Now,
+                            entry.Position,
+                            entry.Position,
+                            entry.Action,
+                            entry.RoomId,
+                            entry.Detail
+                        ));
+                    }
                 }
                 
                 if (exit.ConnectedRoom != null)
