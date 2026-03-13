@@ -118,7 +118,9 @@ public class Renderer
                     // Room is visible — walls are always visible; only fog unrevealed floor tiles
                     if (!room.RevealedTiles.Contains(worldPos) && !IsWall(room, worldPos))
                     {
+                        // Fogged tile: very dark background + barely-visible dot
                         buffer.Append(_theme.FoggedFloor);
+                        buffer.Append(_theme.FoggedFloorFg);
                         buffer.Append(FOGGED_FLOOR);
                         buffer.Append(ColorTheme.Reset);
                         continue;
@@ -133,13 +135,14 @@ public class Renderer
                     }
                     else
                     {
-                        // Floor
-                        string floorColor = room.Type == RoomType.Corridor ? 
-                            _theme.CorridorFloor : _theme.RoomFloor;
-                        char floorChar = room.Type == RoomType.Corridor ? 
-                            CORRIDOR_FLOOR : FLOOR;
-                        
-                        buffer.Append(floorColor);
+                        // Revealed floor: colored background + subtle texture character
+                        bool isCorridor = room.Type == RoomType.Corridor;
+                        string floorBg  = isCorridor ? _theme.CorridorFloor  : _theme.RoomFloor;
+                        string floorFg  = isCorridor ? _theme.CorridorFloorFg : _theme.RoomFloorFg;
+                        char   floorChar = isCorridor ? CORRIDOR_FLOOR : FLOOR;
+
+                        buffer.Append(floorBg);
+                        buffer.Append(floorFg);
                         buffer.Append(floorChar);
                         buffer.Append(ColorTheme.Reset);
                     }
