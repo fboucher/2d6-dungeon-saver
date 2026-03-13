@@ -114,6 +114,15 @@ public class Renderer
                         continue;
                     }
 
+                    // Room is visible — check per-tile reveal state
+                    if (!room.RevealedTiles.Contains(worldPos))
+                    {
+                        buffer.Append(_theme.FogOfWar);
+                        buffer.Append(FOG);
+                        buffer.Append(ColorTheme.Reset);
+                        continue;
+                    }
+
                     // Check if position is a wall or floor
                     if (IsWall(room, worldPos))
                     {

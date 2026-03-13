@@ -102,9 +102,18 @@ public class ExplorerAI
                 room.IsVisible = true;
                 _explorer.VisitedRoomIds.Add(room.Id);
                 
-                // Pause to appreciate the new room
-                _explorer.Pause(DISCOVERY_PAUSE_MS);
-                _explorer.State = ExplorerState.DiscoveringRoom;
+                // Reveal entry tile immediately and begin fog walk to clear the rest
+                _explorer.CurrentRoom?.RevealedTiles.Add(_explorer.Position);
+                var fogPath = BuildFogWalkPath(room);
+                if (fogPath.Count > 0)
+                {
+                    _explorer.CurrentPath = fogPath;
+                    _explorer.State = ExplorerState.FogWalking;
+                }
+                else
+                {
+                    _explorer.State = ExplorerState.Moving;
+                }
             }
             else
             {
@@ -115,6 +124,10 @@ public class ExplorerAI
 
     private void DecideNextDestination()
     {
+        // If fog walk just finished, transition to normal movement
+        if (_explorer.State == ExplorerState.FogWalking)
+            _explorer.State = ExplorerState.Moving;
+
         // Priority 1: Unexplored exit in current room
         var unexploredExit = FindUnexploredExit();
         if (unexploredExit != null)
@@ -339,6 +352,7 @@ public class ExplorerAI
         
         _explorer.Position = nextPos;
         _explorer.LastMoveTime = DateTime.Now;
+        _explorer.CurrentRoom?.RevealedTiles.Add(nextPos);
 
         // Log movement
         _explorer.AddTrace(new MovementEvent(
@@ -352,6 +366,42 @@ public class ExplorerAI
 
         // Check if we crossed an exit
         CheckExitCrossing(nextPos);
+    }
+
+    private List<Point> BuildFogWalkPath(Room room)
+    {
+        var waypoints = new List<Point>();
+        int col = 0;
+        // One waypoint per row (y += 2), alternating left/right columns for a snake sweep
+        for (int y = room.Bounds.Top + 1; y < room.Bounds.Bottom; y += 2)
+        {
+            int x = (col % 2 == 0) ? room.Bounds.Left + 1 : room.Bounds.Right - 1;
+            waypoints.Add(new Point(x, y));
+            col++;
+        }
+
+        if (waypoints.Count == 0)
+            return new List<Point>();
+
+        // Chain waypoints into a single path via pathfinder
+        var fullPath = new List<Point>();
+        Point from = _explorer.Position;
+        foreach (var wp in waypoints)
+        {
+            var segment = _pathfinder.FindPath(from, wp, room, null);
+            if (segment.Count > 0)
+            {
+                if (fullPath.Count > 0 && segment[0] == fullPath[^1])
+                    segment.RemoveAt(0);
+                fullPath.AddRange(segment);
+                from = wp;
+            }
+        }
+
+        if (fullPath.Count > 0 && fullPath[0] == _explorer.Position)
+            fullPath.RemoveAt(0);
+
+        return fullPath;
     }
 
     private void CheckExitCrossing(Point position)

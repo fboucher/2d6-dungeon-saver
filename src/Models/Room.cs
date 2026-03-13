@@ -22,6 +22,7 @@ public class Room
     public List<Exit> Exits { get; set; }
     public bool IsExplored { get; set; }
     public bool IsVisible { get; set; }
+    public HashSet<Point> RevealedTiles { get; } = new();
 
     public Room(int id, Rectangle bounds, RoomType type)
     {

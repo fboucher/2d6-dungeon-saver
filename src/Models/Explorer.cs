@@ -7,6 +7,7 @@ public enum ExplorerState
     Idle,
     Moving,
     DiscoveringRoom,
+    FogWalking,
     Wandering
 }
 
