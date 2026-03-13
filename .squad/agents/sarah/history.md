@@ -169,3 +169,41 @@ TryAdjustRoomPosition → IsExitReachableInRoom → if false → retry loop (20 
 **Result:** Trace now shows: `Room:6    [Retry  1/20] (52,59)         [4][1] Corridor - corner (bounds:...)` for each attempt.
 
 **Key Insight:** The detail string is the only data channel from `GenerationLogEntry` to `MapExporter`. Embedding the attempt number as a structured prefix (`N/20`) in the detail keeps `GenerationLogEntry` record unchanged and avoids adding new fields to the record.
+
+## 2025 — Fix: IsNavigationBlocked cutting off BFS discovery of room subtrees
+
+**Task:** Implement Ludo's navigation-blocked subtree fix (from `.squad/decisions/inbox/ludo-navigation-blocked-subtree.md`).
+
+**Problem:** `IsNavigationBlocked = true` was set on an exit whenever `NavigateToExit` failed to find a path. Because both the seed and expansion phases of the BFS in `FindPathToNearestUnexploredExit` filtered on `!e.IsNavigationBlocked`, the connected room and its entire subtree became permanently invisible to the explorer.
+
+**Changes to `src/Core/ExplorerAI.cs`:**
+
+1. **Part A (BFS filters):** Removed `!e.IsNavigationBlocked` from both the seed-phase and expansion-phase LINQ predicates in `FindPathToNearestUnexploredExit`. The BFS now discovers all rooms reachable via explored exits; `IsNavigationBlocked` no longer hides room subtrees.
+
+2. **Part B (NavigateToExit):** Captured `wasAlreadyExplored` before mutating `exit.IsExplored = true`. Now `IsNavigationBlocked` is only set when the exit was NOT previously explored — geometric dead-ends only, not exits to rooms the explorer already visited physically.
+
+**Result:** Build clean (pre-existing warning unchanged). All 29 tests pass. Committed on branch `squad/dungeon-fixes`.
+
+## 2025 — Fix: Generate room on physical door arrival, not at decision time
+
+**Task:** Implement Jareth's approved design from `.squad/decisions/inbox/jareth-door-generate-timing.md`.
+
+**Problem (two symptoms, one root cause):**
+1. Explorer teleported to a new room without visibly walking to the door first.
+2. Door 6N would seal during backtrack navigation — `FindUnexploredExit` called `GenerateRoomAtExit` and immediately marked the exit `IsExplored` if generation failed, even though the explorer was physically nowhere near the door.
+
+Both caused by `FindUnexploredExit` doing room generation at decision time rather than on physical arrival.
+
+**Changes to `src/Core/ExplorerAI.cs`:**
+
+1. **`FindUnexploredExit()`:** Stripped all room generation logic. Now a pure filter: iterates `CurrentRoom.Exits`, skips any with `IsExplored || IsBlocked`, returns first match regardless of whether `ConnectedRoom` is null.
+
+2. **`NavigateToExit()`:** No changes needed. Already correctly targets `exit.Position` when `ConnectedRoom == null`.
+
+3. **`CheckExitCrossing()`:** Extended to handle unconnected exits. When explorer physically arrives at a door position (`exit.Position == position`) and the exit has no `ConnectedRoom`, is not explored, and is not blocked: attempt `GenerateRoomAtExit`, drain generation log into trace. If generation still left `ConnectedRoom == null`, mark `IsExplored = true` and add `DoorSealed` trace event. If generation succeeded, fall through to the existing connected-exit block.
+
+4. **`FindPathToNearestUnexploredExit()`:** Changed `hasUnexplored` predicate from `!e.IsExplored` to `!e.IsExplored && !e.IsBlocked` so the BFS doesn't route the explorer toward exits that can never be opened.
+
+**Key design insight:** The foreach in `CheckExitCrossing` uses `continue` on position mismatch, then sequential `if` blocks (unconnected then connected) rather than a single `if/else`. This lets the unconnected-exit block fall through to the connected block in the success case without code duplication.
+
+**Result:** Build clean (pre-existing warning unchanged). Committed on branch `squad/dungeon-fixes`.

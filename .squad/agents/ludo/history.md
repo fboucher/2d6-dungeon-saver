@@ -102,3 +102,26 @@ Ludo joins the team to audit room placement and sealing decisions. Initial findi
 3. **Retry loop should be the default path** — collisionless placement + unreachable exit = try different room size, not seal
 
 **Next Steps:** Monitor placement patterns in generated dungeons. Identify rooms that should have connected but were sealed unnecessarily. Propose algorithm tuning if needed.
+
+---
+
+## 2025-06-30 — IsNavigationBlocked Subtree Cutoff Bug Analysis
+
+**Task:** Investigate why the explorer ignores rooms with unvisited exits during backtracking.
+
+**Finding:** Bug confirmed. `IsNavigationBlocked`, when set on a bridge exit (the only forward link from the current room to a subtree), causes the BFS in `FindPathToNearestUnexploredExit` to never enqueue the rooms beyond it. The entire subtree becomes permanently invisible.
+
+**Root cause — two interacting defects:**
+
+1. `NavigateToExit` sets `IsNavigationBlocked = true` on exits in the CURRENT room whenever pathfinding fails — including exits that were already successfully traversed (IsExplored=true via CheckExitCrossing). The pathfinding failure is often transient, caused by the known `GetStepInsideRoom` / `TryAdjustRoomPosition` mismatch.
+
+2. Both the seed and expansion phases of `FindPathToNearestUnexploredExit` filter out `!e.IsNavigationBlocked`. A single blocked bridge exit cuts off its entire subtree.
+
+**Proposed fix (two targeted changes to `ExplorerAI.cs`):**
+
+- `FindPathToNearestUnexploredExit`: Remove `!e.IsNavigationBlocked` from both seed and expansion LINQ predicates. BFS now discovers all connected rooms regardless of nav-block status.
+- `NavigateToExit`: Before mutating `exit.IsExplored`, capture `wasAlreadyExplored`. Only set `IsNavigationBlocked = true` if `!wasAlreadyExplored`. Already-explored exits that fail pathfinding are transient failures, not geometric dead-ends.
+
+**Key risk:** Without `IsNavigationBlocked` gating nav-blocked already-explored exits, there's potential for infinite silent retry loops. Mitigated by the underlying geometry fix (Jareth/Sarah prior decision). A per-exit retry cap is the safety net if needed.
+
+**Deliverable:** Full analysis written to `.squad/decisions/inbox/ludo-navigation-blocked-subtree.md`. Implementation handed off to Sarah.

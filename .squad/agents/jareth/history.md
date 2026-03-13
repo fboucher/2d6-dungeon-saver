@@ -96,3 +96,28 @@ The exit (`+`) appears at column 10, which is both the parent room's right edge 
 2. **Short-term:** Validate targets in `NavigateToExit` before pathfinding. Ensure target is inside the connected room.
 3. **Long-term:** Decouple exit position from room bounds. Store room position changes and update exit references.
 
+### Generation Timing Architecture (2025-07)
+
+**Root cause of "door sealed during backtrack" bug:** `FindUnexploredExit()` calls `GenerateRoomAtExit()` during decision-making, before the explorer moves. When the explorer backtracks to a room and generation fails at an exit, the door seals while the explorer is still walking in from a different room. Frank sees doors change state with no visible cause.
+
+**Fix: generation moves to CheckExitCrossing.** Room generation now fires when the explorer physically arrives at an exit tile with `ConnectedRoom == null`. `FindUnexploredExit` becomes a pure filter (`!IsExplored && !IsBlocked`). This solves both the timing bug and Frank's "walk to door first" request.
+
+**Key interaction verified:** After generation succeeds in `CheckExitCrossing`, the exit is marked explored. On the next tick, `UpdateCurrentRoom` detects the explorer on the shared wall → room switch → discovery pause. The explorer "enters" the new room from the door position. Pathfinding from the door position works because exit tiles are walkable in `IsWalkable` (Pathfinder line 126–127).
+
+**Pathfinder fallback was already fixed** (returns empty list, line 76-77). Confirmed during this review.
+
+**Defensive filter added to BFS:** `FindPathToNearestUnexploredExit` line 216 now checks `!e.IsBlocked` alongside `!e.IsExplored` to prevent routing to rooms where all unexplored exits are actually blocked.
+
+### Generation Timing Fix Implementation (2026-03-13)
+
+**Status: Implemented by Sarah**
+
+Design decision "Move Room Generation to Exit Arrival" was approved and implemented. Sarah completed the refactoring:
+- `FindUnexploredExit()` stripped to pure filter returning first `!IsExplored && !IsBlocked` exit
+- `CheckExitCrossing()` extended to generate rooms on physical door arrival
+- `FindPathToNearestUnexploredExit()` updated with defensive `!e.IsBlocked` filter
+- Build clean, all 29 tests pass
+- Commit: 70f6354
+
+This resolves both Frank's visual request (explorer walks to door before room generation) and the door-6N-sealed-during-backtrack bug (generation only fires when explorer physically at door).
+

@@ -283,6 +283,72 @@ Replace single-hop adjacency check with **breadth-first search (BFS)** through t
 - `src/Core/ExplorerAI.cs` — exploration logic and BFS implementation
 - `src/Models/Explorer.cs` — movement trace ("Backtrack" action type)
 
+### Move Room Generation to Exit Arrival
+
+**Date:** 2025-07  
+**Decided by:** Jareth (Lead)  
+**Status:** Implemented
+
+#### Problem
+
+Two related issues share the same root cause:
+
+1. **Frank's request:** "I would like the explorer to walk in front of the door before the next room is generated." Currently, `FindUnexploredExit()` calls `GenerateRoomAtExit()` *before the explorer moves at all*. The room appears instantly while the explorer is still across the room.
+
+2. **Bug — door 6N sealed during backtrack:** Explorer backtracks from room 10 to room 6. While still walking in from room 10, `FindUnexploredExit()` fires for room 6's north exit, generation fails (no space north of room 6), and the door silently changes from `?` to `X` before the explorer reaches it. Frank sees a door seal for no visible reason.
+
+#### Decision
+
+Move room generation OUT of `FindUnexploredExit()` and INTO `CheckExitCrossing()`. Generation now happens when the explorer physically arrives at the door — not when the AI picks a destination.
+
+#### Implementation Changes
+
+**`FindUnexploredExit()` — Simplified to pure filter:**
+- Iterates `CurrentRoom.Exits`
+- Skips exits with `IsExplored || IsBlocked`
+- Returns first match regardless of whether `ConnectedRoom == null`
+- An exit with `ConnectedRoom == null && !IsExplored && !IsBlocked` is now valid: "a door the explorer should walk to"
+
+**`CheckExitCrossing()` — Extended to handle unconnected exits:**
+- When explorer reaches door position AND exit has no `ConnectedRoom`, is not explored, and is not blocked
+- Attempts `GenerateRoomAtExit()`
+- If generation leaves `ConnectedRoom == null`, marks `IsExplored = true` and adds `DoorSealed` trace
+- If generation succeeds, falls through to existing connected-exit handling
+- Sequential `if` blocks (using `continue` on position mismatch) prevent code duplication
+
+**`FindPathToNearestUnexploredExit()` — Defensive filter:**
+- Changed predicate from `!e.IsExplored` to `!e.IsExplored && !e.IsBlocked`
+- Prevents BFS routing toward exits that can never be opened
+
+**`NavigateToExit()` — No changes**
+- Already targets exit position correctly
+
+#### Edge Cases
+
+- **Room-switch timing:** After generation succeeds, exit is marked explored and `ConnectedRoom` is set. On next tick, `UpdateCurrentRoom` detects explorer is on shared wall → room switch → discovery pause fires.
+- **Pathfinding from door:** Explorer can path from entrance (exit tile) to any interior or other exit in new room; `IsWalkable` returns true for exit tiles.
+- **BFS still finds rooms:** An unconnected, unexplored, unblocked exit satisfies `!e.IsExplored` check; BFS routes explorer to these doors.
+- **No double-trigger:** After generation fails, `IsExplored = true` prevents re-trigger of the new unconnected block.
+
+#### Consequences
+
+**Positive:**
+- Explorer visibly walks to doors before rooms appear
+- Doors only seal when explorer is physically at the door
+- Cleaner separation: `FindUnexploredExit` is pure selection, `CheckExitCrossing` is action point
+- No changes to DungeonBuilder, Pathfinder, or models
+
+**Negative:**
+- Explorer may walk to doors that fail generation (wasted trip). Intentional — visual approach+seal is better than invisible remote sealing.
+
+#### Technical Insight
+
+Sequential `if` blocks in `CheckExitCrossing` (using `continue` on position mismatch) allow unconnected-exit block to fall through to connected block on success without duplicating mark-explored and room-visibility logic.
+
+#### Related Files
+
+- `src/Core/ExplorerAI.cs` — all changes (FindUnexploredExit simplified, CheckExitCrossing extended, FindPathToNearestUnexploredExit defensive filter)
+
 ## Governance
 
 - All meaningful changes require team consensus
