@@ -114,8 +114,8 @@ public class Renderer
                         continue;
                     }
 
-                    // Room is visible — check per-tile reveal state
-                    if (!room.RevealedTiles.Contains(worldPos))
+                    // Room is visible — walls are always visible; only fog unrevealed floor tiles
+                    if (!room.RevealedTiles.Contains(worldPos) && !IsWall(room, worldPos))
                     {
                         buffer.Append(_theme.FogOfWar);
                         buffer.Append(FOG);
