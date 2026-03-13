@@ -145,7 +145,7 @@ public class ExplorerAI
 
         foreach (var exit in _explorer.CurrentRoom.Exits)
         {
-            if (!exit.IsExplored && !exit.IsBlocked)
+            if (!exit.IsExplored && !exit.IsBlocked && _dungeon.Rooms.Count < _dungeon.TargetRoomCount)
                 return exit;
         }
 
@@ -185,7 +185,8 @@ public class ExplorerAI
             // Does this room have any exits not yet marked explored?
             // (Includes exits with connected rooms to enter AND exits that may still
             // generate a room or will be marked dead-end when the explorer arrives.)
-            bool hasUnexplored = current.Exits.Any(e => !e.IsExplored && !e.IsBlocked);
+            bool hasUnexplored = _dungeon.Rooms.Count < _dungeon.TargetRoomCount &&
+                                  current.Exits.Any(e => !e.IsExplored && !e.IsBlocked);
 
             if (hasUnexplored)
             {
@@ -385,9 +386,9 @@ public class ExplorerAI
                     }
                 }
 
-                if (exit.ConnectedRoom == null)
+                if (exit.ConnectedRoom == null && exit.IsBlocked)
                 {
-                    // Generation failed (DungeonBuilder set IsBlocked) or room count at max
+                    // DungeonBuilder exhausted all retries — seal this exit
                     exit.IsExplored = true;
                     _explorer.AddTrace(new MovementEvent(
                         DateTime.Now,
@@ -397,6 +398,12 @@ public class ExplorerAI
                         _explorer.CurrentRoom.Id,
                         $"Dir:{exit.Direction}"
                     ));
+                    break;
+                }
+
+                if (exit.ConnectedRoom == null)
+                {
+                    // Room count at max — leave exit unmodified so it stays unexplored
                     break;
                 }
 
