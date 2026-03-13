@@ -22,7 +22,8 @@ public class Renderer
     private const char EXIT_EXPLORED = '+';
     private const char EXIT_UNEXPLORED = '?';
     private const char EXIT_SEALED = 'X';
-    private const char FOG = ' ';  // Empty space for fog
+    private const char FOG = ' ';          // Empty space — room not visible at all
+    private const char FOGGED_FLOOR = '·'; // Dim floor — room visible but tile not yet revealed
 
     public Renderer()
     {
@@ -117,8 +118,8 @@ public class Renderer
                     // Room is visible — walls are always visible; only fog unrevealed floor tiles
                     if (!room.RevealedTiles.Contains(worldPos) && !IsWall(room, worldPos))
                     {
-                        buffer.Append(_theme.FogOfWar);
-                        buffer.Append(FOG);
+                        buffer.Append(_theme.FoggedFloor);
+                        buffer.Append(FOGGED_FLOOR);
                         buffer.Append(ColorTheme.Reset);
                         continue;
                     }

@@ -352,7 +352,17 @@ public class ExplorerAI
         
         _explorer.Position = nextPos;
         _explorer.LastMoveTime = DateTime.Now;
-        _explorer.CurrentRoom?.RevealedTiles.Add(nextPos);
+
+        // Reveal stepped tile and orthogonal neighbors (walls adjacent to walked floor reveal naturally)
+        if (_explorer.CurrentRoom != null)
+        {
+            var tiles = _explorer.CurrentRoom.RevealedTiles;
+            tiles.Add(nextPos);
+            tiles.Add(new Point(nextPos.X,     nextPos.Y - 1));
+            tiles.Add(new Point(nextPos.X,     nextPos.Y + 1));
+            tiles.Add(new Point(nextPos.X - 1, nextPos.Y));
+            tiles.Add(new Point(nextPos.X + 1, nextPos.Y));
+        }
 
         // Log movement
         _explorer.AddTrace(new MovementEvent(

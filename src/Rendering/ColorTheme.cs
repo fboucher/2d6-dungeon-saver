@@ -15,6 +15,7 @@ public class ColorTheme
     public string Explorer { get; }       // Peach
     public string Background { get; }     // Base (dark)
     public string FogOfWar { get; }       // Crust (very dark)
+    public string FoggedFloor { get; }    // Mantle (dim — unrevealed floor in visible room)
     public string Text { get; }           // Text
 
     public ColorTheme()
@@ -28,6 +29,7 @@ public class ColorTheme
         Explorer = "\x1b[38;5;216m";       // Peach (orange)
         Background = "\x1b[48;5;232m";     // Base background (very dark)
         FogOfWar = "\x1b[38;5;233m";       // Crust (barely visible)
+        FoggedFloor = "\x1b[38;5;235m";    // Mantle (dim shadow — unrevealed floor within visible room)
         Text = "\x1b[38;5;205m";           // Text (light)
     }
 
