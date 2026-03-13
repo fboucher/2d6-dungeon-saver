@@ -140,43 +140,15 @@ public class ExplorerAI
 
     private Exit? FindUnexploredExit()
     {
-        // First, look for unexplored exits in the CURRENT room
-        if (_explorer.CurrentRoom != null)
+        if (_explorer.CurrentRoom == null)
+            return null;
+
+        foreach (var exit in _explorer.CurrentRoom.Exits)
         {
-            foreach (var exit in _explorer.CurrentRoom.Exits.Where(e => !e.IsExplored))
-            {
-                // Generate room at this exit if not already done
-                if (exit.ConnectedRoom == null && _dungeon.Rooms.Count < _dungeon.TargetRoomCount)
-                {
-                    _dungeonBuilder.GenerateRoomAtExit(exit, _explorer.CurrentRoom);
-                    
-                    // Drain generation log and add to trace
-                    var genLog = _dungeonBuilder.DrainGenerationLog();
-                    foreach (var entry in genLog)
-                    {
-                        _explorer.AddTrace(new MovementEvent(
-                            DateTime.Now,
-                            entry.Position,
-                            entry.Position,
-                            entry.Action,
-                            entry.RoomId,
-                            entry.Detail
-                        ));
-                    }
-                }
-                
-                if (exit.ConnectedRoom != null)
-                {
-                    return exit;
-                }
-                else
-                {
-                    // Dead end: couldn't place a room here. Mark as explored so we don't retry forever.
-                    exit.IsExplored = true;
-                }
-            }
+            if (!exit.IsExplored && !exit.IsBlocked)
+                return exit;
         }
-        
+
         return null;
     }
 
@@ -213,7 +185,7 @@ public class ExplorerAI
             // Does this room have any exits not yet marked explored?
             // (Includes exits with connected rooms to enter AND exits that may still
             // generate a room or will be marked dead-end when the explorer arrives.)
-            bool hasUnexplored = current.Exits.Any(e => !e.IsExplored);
+            bool hasUnexplored = current.Exits.Any(e => !e.IsExplored && !e.IsBlocked);
 
             if (hasUnexplored)
             {
@@ -389,7 +361,50 @@ public class ExplorerAI
 
         foreach (var exit in _explorer.CurrentRoom.Exits)
         {
-            if (exit.Position == position && exit.ConnectedRoom != null)
+            if (exit.Position != position)
+                continue;
+
+            // Handle unconnected exit: explorer just walked to this door
+            if (exit.ConnectedRoom == null && !exit.IsExplored && !exit.IsBlocked)
+            {
+                if (_dungeon.Rooms.Count < _dungeon.TargetRoomCount)
+                {
+                    _dungeonBuilder.GenerateRoomAtExit(exit, _explorer.CurrentRoom);
+
+                    var genLog = _dungeonBuilder.DrainGenerationLog();
+                    foreach (var entry in genLog)
+                    {
+                        _explorer.AddTrace(new MovementEvent(
+                            DateTime.Now,
+                            entry.Position,
+                            entry.Position,
+                            entry.Action,
+                            entry.RoomId,
+                            entry.Detail
+                        ));
+                    }
+                }
+
+                if (exit.ConnectedRoom == null)
+                {
+                    // Generation failed (DungeonBuilder set IsBlocked) or room count at max
+                    exit.IsExplored = true;
+                    _explorer.AddTrace(new MovementEvent(
+                        DateTime.Now,
+                        position,
+                        position,
+                        "DoorSealed",
+                        _explorer.CurrentRoom.Id,
+                        $"Dir:{exit.Direction}"
+                    ));
+                    break;
+                }
+
+                // Generation succeeded — fall through to connected-exit handling below
+            }
+
+            // Handle connected exit
+            if (exit.ConnectedRoom != null)
             {
                 exit.IsExplored = true;
                 
